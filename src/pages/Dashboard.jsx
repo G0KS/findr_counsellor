@@ -5,7 +5,7 @@ import {
    useFrappeGetDocCount,
    useFrappeGetDocList,
 } from "frappe-react-sdk";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRole } from "../context/RoleContext";
 
 function Dashboard() {
@@ -14,34 +14,15 @@ function Dashboard() {
    const [isLoading, setIsLoading] = useState(true);
    const { currentUser, roleProfile } = useRole();
 
-   const assignedTo = useFrappeGetDocList("ToDo", {
-      fields: ["*"],
-      // filters: [["allocated_to", "=", currentUser]],
-   });
-
-   console.log(assignedTo.data);
-   
-
-   const studentArray = [];
-   if (assignedTo.data)
-      assignedTo.data.map((student) =>
-         studentArray.push(student.reference_name)
-      );
-
-   const check = useFrappeGetDocList("Student", {
-      fields: ["*"],
-      filters: [["name", "in", studentArray]],
-   });
-
    const { createDoc } = useFrappeCreateDoc();
 
    const trial = () => {
       createDoc("ToDo", {
-         assigned_by:currentUser,
-         reference_type:"Student",
+         assigned_by: currentUser,
+         reference_type: "Student",
          allocated_to: "counsellor@findr.study",
          reference_name: "STU-001",
-         description:"Assigned to Counsellor"
+         description: "Assigned to Counsellor",
       })
          .then((res) => console.log(res))
          .catch((err) => console.error(err));
@@ -96,7 +77,7 @@ function Dashboard() {
          ),
          title: "Newly Assigned Clients",
          description: `You have new "n" assigned students to give course`,
-         location: "students",
+         location: "students/new",
          role: "Counsellor",
       },
       {
@@ -108,7 +89,7 @@ function Dashboard() {
          ),
          title: "Review Clients",
          description: `You have "m" client reviews`,
-         location: "students",
+         location: "students/review",
          role: "Counsellor",
       },
    ];
@@ -116,7 +97,6 @@ function Dashboard() {
    return (
       <div className="container lg:px-24 px-4 py-24 h-dvh">
          <>
-            <button onClick={trial}>Trial</button>
             <GetNewStudentsCount
                setNewlyPaid={setNewlyPaid}
                setIsLoading={setIsLoading}
@@ -221,13 +201,14 @@ const GetNewStudentsCount = ({ setNewlyPaid, setIsLoading }) => {
       ["course_added", "=", "0"],
    ]);
 
-   if (isLoading) setIsLoading(isLoading);
-   else {
+   useEffect(() => {
       setIsLoading(isLoading);
-      setNewlyPaid(data);
-   }
+      if (!isLoading) {
+         setNewlyPaid(data);
+      }
+   }, [data, isLoading, setNewlyPaid, setIsLoading]); // Dependencies to track
 
-   return null;
+   return null; // No UI needed
 };
 
 const GetExisitngStudentsCount = ({ setExistingStudent, setIsLoading }) => {
@@ -236,11 +217,12 @@ const GetExisitngStudentsCount = ({ setExistingStudent, setIsLoading }) => {
       ["course_added", "=", "1"],
    ]);
 
-   if (isLoading) setIsLoading(isLoading);
-   else {
+   useEffect(() => {
       setIsLoading(isLoading);
-      setExistingStudent(data);
-   }
+      if (!isLoading) {
+         setExistingStudent(data);
+      }
+   }, [data, isLoading, setExistingStudent, setIsLoading]); // Dependencies to track
 
    return null;
 };

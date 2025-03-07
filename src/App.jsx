@@ -3,7 +3,6 @@ import "./App.css";
 import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import { FrappeProvider } from "frappe-react-sdk";
-import StudentsPage from "./pages/StudentsPage";
 import Student from "./pages/Student";
 import ScrollToTop from "./components/ScrollToTop";
 import Course from "./pages/Course";
@@ -12,6 +11,7 @@ import { ToastContainer } from "react-toastify";
 import { RoleProvider } from "./context/RoleContext";
 import NewStudentsPage from "./pages/NewStudentsPage";
 import StudentsReviewPage from "./pages/StudentsReviewPage";
+import StudentsCourseGiven from "./pages/StudentsCourseGiven";
 
 function App() {
    const api_key = import.meta.env.VITE_FRAPPE_STUDENT_KEY;
@@ -34,7 +34,6 @@ function App() {
                <ScrollToTop />
                <Routes>
                   <Route path="/" element={<Dashboard />} />
-                  <Route path="/students" element={<StudentsPage />} />
                   <Route path="/students/new" element={<NewStudentsPage />} />
                   <Route
                      path="/students/review"
@@ -42,7 +41,7 @@ function App() {
                   />
                   <Route
                      path="/students/course-given"
-                     element={<StudentsPage />}
+                     element={<StudentsCourseGiven />}
                   />
                   <Route path="/students/:id" element={<Student />} />
                   <Route path="/course/:id" element={<Course />} />

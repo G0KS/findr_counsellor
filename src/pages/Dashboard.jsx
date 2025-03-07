@@ -92,6 +92,18 @@ function Dashboard() {
          location: "students/review",
          role: "Counsellor",
       },
+      {
+         id: "6",
+         image: (
+            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
+               partner_exchange
+            </span>
+         ),
+         title: "Flagged Clients",
+         description: `Clients that have been flagged by Auditor or Counsellor`,
+         location: "students/auditor-review",
+         role: "Master Auditor",
+      },
    ];
 
    return (

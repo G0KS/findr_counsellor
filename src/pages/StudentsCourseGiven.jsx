@@ -7,22 +7,11 @@ import { useRole } from "../context/RoleContext";
 function StudentsCourseGiven() {
    const navigate = useNavigate();
    const [pageIndex, setPageIndex] = useState(0);
-   const { currentUser } = useRole();
+   const { roleProfile } = useRole();
 
-   const assignedTo = useFrappeGetDocList("ToDo", {
-      fields: ["reference_name"],
-      filters: [["allocated_to", "=", currentUser]],
-   });
-
-   const [studentArray, setStudentArray] = useState([]);
    useEffect(() => {
-      if (!assignedTo.isLoading && assignedTo.data) {
-         const updatedArray = assignedTo.data.map(
-            (item) => item.reference_name
-         );
-         setStudentArray(updatedArray);
-      }
-   }, [assignedTo.isLoading]);
+      if (roleProfile == "Counsellor") navigate("/");
+   }, [roleProfile]);
 
    const { data, isLoading } = useFrappeGetDocList("Student", {
       fields: [
@@ -34,9 +23,7 @@ function StudentsCourseGiven() {
       ],
       filters: [
          ["registration_fee", "=", "1"],
-         ["course_added_for_review", "=", "0"],
          ["course_added", "=", "1"],
-         ["name", "in", studentArray],
       ],
       limit_start: pageIndex,
       limit: 18,

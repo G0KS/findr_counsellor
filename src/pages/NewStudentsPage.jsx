@@ -7,22 +7,35 @@ import { useRole } from "../context/RoleContext";
 function NewStudentsPage() {
    const navigate = useNavigate();
    const [pageIndex, setPageIndex] = useState(0);
-   const { currentUser } = useRole();
+   const { currentUser, roleProfile } = useRole();
    const [studentArray, setStudentArray] = useState([]);
+   const [filteredData, setFilteredData] = useState([]);
 
    const assignedTo = useFrappeGetDocList("ToDo", {
       fields: ["reference_name"],
-      filters: [["allocated_to", "=", currentUser]],
+      filters: [
+         ["allocated_to", "=", currentUser],
+         ["priority", "=", "Low"], //Low priority is set when the student is assigned initially
+      ],
    });
 
    useEffect(() => {
-      if (!assignedTo.isLoading && assignedTo.data) {
+      if (
+         roleProfile === "Counsellor" &&
+         !assignedTo.isLoading &&
+         assignedTo.data
+      ) {
          const updatedArray = assignedTo.data.map(
             (item) => item.reference_name
          );
          setStudentArray(updatedArray);
       }
-   }, [assignedTo.isLoading]);
+   }, [assignedTo.data, roleProfile]);
+
+   const [filters, setFilters] = useState([
+      ["registration_fee", "=", "1"],
+      ["course_added", "=", "0"],
+   ]);
 
    const { data, isLoading } = useFrappeGetDocList("Student", {
       fields: [
@@ -31,22 +44,46 @@ function NewStudentsPage() {
          "last_name",
          "education_program",
          "course_list",
+         "status",
       ],
-      filters: [
-         ["registration_fee", "=", "1"],
-         ["course_added", "=", "0"],
-      ],
+      filters,
       limit_start: pageIndex,
       limit: 18,
       orderBy: {
          field: "modified",
          order: "asc",
       },
-   });   
+   });
 
-   const filteredData = data?.filter((item) =>
-      studentArray.includes(item.name)
-   );
+   useEffect(() => {
+      if (roleProfile === "Counsellor") {
+         if (studentArray.length > 0) {
+            const filtering = data?.filter((item) =>
+               studentArray.includes(item.name)
+            );
+            setFilteredData(filtering || []);
+            setFilters([
+               ["registration_fee", "=", "1"],
+               ["course_added", "=", "0"],
+               ["status", "=", "Assigned"],
+            ]);
+         } else {
+            setFilteredData([]); // If assignedTo has no students, keep it empty
+            setFilters([
+               ["registration_fee", "=", "1"],
+               ["course_added", "=", "0"],
+               ["status", "=", "New"],
+            ]);
+         }
+      } else {
+         setFilteredData(data || []); // For other roles, show all students
+         setFilters([
+            ["registration_fee", "=", "1"],
+            ["course_added", "=", "0"],
+            ["status", "=", "New"],
+         ]);
+      }
+   }, [studentArray, data, roleProfile]);
 
    return (
       <div className="studentSection container lg:px-24 px-4 py-24">
@@ -63,17 +100,11 @@ function NewStudentsPage() {
             </div>
          ) : (
             <>
-               {data ? (
-                  <StudentList
-                     data={filteredData}
-                     pageIndex={pageIndex}
-                     setPageIndex={setPageIndex}
-                  />
-               ) : (
-                  <div className="h-dvh flex justify-center align-middle">
-                     <h1>You don&apos;t have any Students</h1>
-                  </div>
-               )}
+               <StudentList
+                  data={filteredData}
+                  pageIndex={pageIndex}
+                  setPageIndex={setPageIndex}
+               />
             </>
          )}
       </div>

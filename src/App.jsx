@@ -6,12 +6,12 @@ import { FrappeProvider } from "frappe-react-sdk";
 import Student from "./pages/Student";
 import ScrollToTop from "./components/ScrollToTop";
 import Course from "./pages/Course";
+import StudentsReviewPage from "./pages/StudentsReviewPage";
+import NewStudentsPage from "./pages/NewStudentsPage";
+import StudentsCourseGiven from "./pages/StudentsCourseGiven";
 
 import { ToastContainer } from "react-toastify";
 import { RoleProvider } from "./context/RoleContext";
-import NewStudentsPage from "./pages/NewStudentsPage";
-import StudentsReviewPage from "./pages/StudentsReviewPage";
-import StudentsCourseGiven from "./pages/StudentsCourseGiven";
 
 function App() {
    const api_key = import.meta.env.VITE_FRAPPE_STUDENT_KEY;

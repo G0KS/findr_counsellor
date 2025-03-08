@@ -1,10 +1,5 @@
 import Card from "../components/Card";
-import {
-   useFrappeCreateDoc,
-   useFrappeGetDoc,
-   useFrappeGetDocCount,
-   useFrappeGetDocList,
-} from "frappe-react-sdk";
+import { useFrappeGetDocCount } from "frappe-react-sdk";
 import { useEffect, useState } from "react";
 import { useRole } from "../context/RoleContext";
 
@@ -12,21 +7,7 @@ function Dashboard() {
    const [newlyPaid, setNewlyPaid] = useState({});
    const [existingStudent, setExistingStudent] = useState({});
    const [isLoading, setIsLoading] = useState(true);
-   const { currentUser, roleProfile } = useRole();
-
-   const { createDoc } = useFrappeCreateDoc();
-
-   const trial = () => {
-      createDoc("ToDo", {
-         assigned_by: currentUser,
-         reference_type: "Student",
-         allocated_to: "counsellor@findr.study",
-         reference_name: "STU-001",
-         description: "Assigned to Counsellor",
-      })
-         .then((res) => console.log(res))
-         .catch((err) => console.error(err));
-   };
+   const { roleProfile } = useRole();
 
    const redirectLoginLink =
       "https://findrstudy.frappe.cloud/login?redirect-to=%2Fcounsellor#login";

@@ -1,7 +1,9 @@
+// edit id and isedit to be used with the arrow keys
+
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
    Dialog,
    DialogBackdrop,
@@ -9,89 +11,61 @@ import {
    DialogTitle,
 } from "@headlessui/react";
 import {
-   useFrappeAuth,
    useFrappeGetDoc,
+   useFrappeGetDocList,
    useFrappeUpdateDoc,
 } from "frappe-react-sdk";
 import { toast } from "react-toastify";
+import { useRole } from "../context/RoleContext";
 
 function Course() {
    const navigate = useNavigate();
    const { id } = useParams();
    const { register, handleSubmit, reset, setValue } = useForm();
-   const { updateDoc } = useFrappeUpdateDoc();
+   const { roleProfile, currentUser } = useRole();
    const [open, setOpen] = useState(false);
    const [deleteId, setDeleteId] = useState(0);
    const [editId, setEditId] = useState(0);
    const [isEdit, setIsEdit] = useState(false);
    const [modal2open, setModal2open] = useState(false);
-   const [reviewModalOpen, setReviewModalOpen] = useState(false);
    const [currentIndex, setCurrentIndex] = useState(null);
-   const [isReview, setIsReview] = useState(false);
-   const [isAuditor, setIsAuditor] = useState(false);
-   // const [isApproved, setIsApproved] = useState(false);
-   const isApproved = useRef(false);
 
-   const { currentUser } = useFrappeAuth();
+   const { updateDoc } = useFrappeUpdateDoc();
+
+   const assignedTo = useFrappeGetDocList("ToDo", {
+      fields: ["*"],
+      filters: [
+         ["allocated_to", "=", currentUser],
+         ["priority", "=", "Medium"], //Medium priority is set when the student is assigned for review
+         ["reference_name", "=", id],
+      ],
+   });
+
+   console.log(assignedTo.data);
+   
 
    const { data, isLoading } = useFrappeGetDoc("Student", id);
-   console.log(data);
-   
-   
-
-   useEffect(() => {
-      if (currentUser === "Administrator") {
-         setIsAuditor(true);
-      }
-   }, [currentUser]);
-
-   console.log(isApproved);
 
    const onSubmit = (formData) => {
       const courseListArray = data.course_list;
-      let auditorMsg = "";
 
-      if (isReview) {
-         if (isApproved) {
-            courseListArray[editId].approved = 1;
-            auditorMsg = "Course Approved";
-         }
-         if (formData?.review) {
-            courseListArray[editId].review = formData.review;
-            auditorMsg = "Review Sent";
-         }
-         updateDoc("Student", id, {
-            course_list: courseListArray,
-         })
-            .then(() => {
-               toast.success(auditorMsg);
-               setReviewModalOpen(false);
-               setIsApproved(false);
-               handleNext();
-            })
-            .catch((err) => {
-               toast.warning("Some internal error");
-               console.error(err);
-            });
-      } else {
-         isEdit
-            ? (courseListArray[editId] = formData)
-            : courseListArray.push(formData);
+      isEdit
+         ? (courseListArray[editId] = formData)
+         : courseListArray.push(formData);
 
-         updateDoc("Student", id, {
-            course_list: courseListArray,
+      updateDoc("Student", id, {
+         course_list: courseListArray,
+         course_added: 1,
+      })
+         .then(() => {
+            toast.success("Course updated");
+            setCurrentIndex(data.course_list.length);
+            reset();
          })
-            .then(() => {
-               toast.success("Course updated");
-               setCurrentIndex(data.course_list.length);
-               reset();
-            })
-            .catch((err) => {
-               toast.warning("Some internal error");
-               console.error(err);
-            });
-      }
-      console.log(courseListArray);
+         .catch((err) => {
+            toast.warning("Some internal error");
+            console.error(err);
+         });
    };
 
    const handleDelete = (index) => {
@@ -117,36 +91,16 @@ function Course() {
             setCurrentIndex(currentIndex - 1);
             setEditId(currentIndex - 1);
          }
-      } else if (data.course_list.length > 0) {
+      } else if (data.course_list.length > 0)
          setCurrentIndex(data.course_list.length - 1);
-         setEditId(data.course_list.length - 1);
-      }
    };
 
    const handleNext = () => {
       if (currentIndex != null) {
-         if (isReview) {
-            if (currentIndex < data.course_list.length - 1) {
-               setCurrentIndex(currentIndex + 1);
-               setEditId(currentIndex + 1);
-            }
-         } else {
-            if (currentIndex < data.course_list.length) {
-               setCurrentIndex(currentIndex + 1);
-               setEditId(currentIndex + 1);
-            }
+         if (currentIndex < data.course_list.length) {
+            setCurrentIndex(currentIndex + 1);
+            setEditId(currentIndex + 1);
          }
-      }
-   };
-
-   const handleReview = () => {
-      if (data.course_list.length > 0) {
-         setOpen(true);
-         setIsReview(true);
-         setEditValue(data.course_list[0]);
-         setEditId(0);
-         setCurrentIndex(0);
-         console.log(data.course_list[0]);
       }
    };
 
@@ -159,11 +113,6 @@ function Course() {
       }
    }, [currentIndex]);
 
-   const handleApproval = () => {
-      setIsApproved(true);
-      onSubmit();
-   };
-
    const handleEdit = (course, index) => {
       setEditValue(course);
       setCurrentIndex(index);
@@ -173,8 +122,6 @@ function Course() {
    };
 
    const setEditValue = (course) => {
-      setValue("approved", course.approved);
-      setValue("review", course.review);
       setValue("course_name", course.course_name);
       setValue("university", course.university);
       setValue("country", course.country);
@@ -202,27 +149,16 @@ function Course() {
                >
                   &lt; Go back
                </button>
-               <div className="flex gap-4">
-                  {isAuditor && (
-                     <button
-                        className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-orange-400 text-white transition ease-in-out duration-300"
-                        onClick={handleReview}
-                     >
-                        Review
-                     </button>
-                  )}
-
-                  <button
-                     className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-[#0f6990] text-white transition ease-in-out duration-300"
-                     onClick={() => {
-                        setOpen(true);
-                        setIsEdit(false);
-                        reset();
-                     }}
-                  >
-                     Add Course
-                  </button>
-               </div>
+               <button
+                  className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-[#0f6990] text-white transition ease-in-out duration-300"
+                  onClick={() => {
+                     setOpen(true);
+                     setIsEdit(false);
+                     reset();
+                  }}
+               >
+                  Add Course
+               </button>
             </div>
             <h2 className="text-3xl lg:text-5xl text-[#0f6990] py-5">
                Courses
@@ -232,48 +168,59 @@ function Course() {
                   <div className="loader"></div>
                </div>
             ) : (
-               <>
-                  <div id="courseListContainer" className="flex justify-center">
-                     <table className="table-auto text-white w-full text-xs md:text-base lg:w-4/5 text-center border border-[#0f6990] rounded">
-                        <thead className="bg-[#0f6990]">
-                           <tr>
-                              <th className="lg:px-10 py-2 w-1/3">
-                                 Course Name
-                              </th>
-                              <th className="lg:px-10 py-2 w-2/3">
-                                 University
-                              </th>
-                              <th className="px-4 py-2">Action</th>
+               <div id="courseListContainer" className="flex justify-center">
+                  <table className="table-auto text-white w-full text-xs md:text-base lg:w-4/5 text-center rounded">
+                     <thead className="">
+                        <tr>
+                           <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-1/3">
+                              Course Name
+                           </th>
+                           <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-2/3">
+                              University
+                           </th>
+                           <th className="bg-[#0f6990] border border-[#0f6990] px-4 py-2">
+                              Action
+                           </th>
+                           <th></th>
+                        </tr>
+                     </thead>
+                     <tbody className=" text-[#0f6990] border border-[#0f6990]">
+                        {data.course_list.map((course, index) => (
+                           <tr key={index}>
+                              <td className="py-1">{course.course_name}</td>
+                              <td className="py-1">{course.university}</td>
+                              <td className="py-1 flex justify-evenly">
+                                 <span
+                                    className="flex justify-center align-middle material-symbols-outlined bg-red-300 rounded p-1 hover:bg-red-600 hover:text-white text-red-600 cursor-pointer"
+                                    onClick={() => {
+                                       setDeleteId(index);
+                                       setModal2open(true);
+                                    }}
+                                 >
+                                    delete_forever
+                                 </span>
+                                 <span
+                                    className="flex justify-center align-middle material-symbols-outlined bg-green-300 rounded p-1 hover:bg-green-600 hover:text-white text-green-800 cursor-pointer"
+                                    onClick={() => handleEdit(course, index)}
+                                 >
+                                    edit
+                                 </span>
+                              </td>
+                              <td className="border border-white border-l-[#0f6990] ps-1">
+                                 {course.approved === 1 && (
+                                    <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-green-600">
+                                       check
+                                    </span>
+                                 )}
+                                 <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-orange-500">
+                                    warning
+                                 </span>
+                              </td>
                            </tr>
-                        </thead>
-                        <tbody className=" text-[#0f6990]">
-                           {data.course_list.map((course, index) => (
-                              <tr key={index}>
-                                 <td className="py-1">{course.course_name}</td>
-                                 <td className="py-1">{course.university}</td>
-                                 <td className="py-1 flex justify-evenly">
-                                    <span
-                                       className="flex justify-center align-middle material-symbols-outlined bg-red-300 rounded p-1 hover:bg-red-600 hover:text-white text-red-600 cursor-pointer"
-                                       onClick={() => {
-                                          setDeleteId(index);
-                                          setModal2open(true);
-                                       }}
-                                    >
-                                       delete_forever
-                                    </span>
-                                    <span
-                                       className="flex justify-center align-middle material-symbols-outlined bg-green-300 rounded p-1 hover:bg-green-600 hover:text-white text-green-800 cursor-pointer"
-                                       onClick={() => handleEdit(course, index)}
-                                    >
-                                       edit
-                                    </span>
-                                 </td>
-                              </tr>
-                           ))}
-                        </tbody>
-                     </table>
-                  </div>
-               </>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
             )}
 
             {/* Course Modal Dialog Box */}
@@ -353,12 +300,6 @@ function Course() {
                                           <div>
                                              <label>Course Deadline</label>
                                              <input
-                                                type="date"
-                                                min={
-                                                   new Date()
-                                                      .toISOString()
-                                                      .split("T")[0]
-                                                }
                                                 {...register("course_deadline")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -379,12 +320,6 @@ function Course() {
                                                 Scholarship 1 Deadline
                                              </label>
                                              <input
-                                                type="date"
-                                                min={
-                                                   new Date()
-                                                      .toISOString()
-                                                      .split("T")[0]
-                                                }
                                                 {...register(
                                                    "scholarship_deadline"
                                                 )}
@@ -413,12 +348,6 @@ function Course() {
                                                 Scholarship 2 Deadline
                                              </label>
                                              <input
-                                                type="date"
-                                                min={
-                                                   new Date()
-                                                      .toISOString()
-                                                      .split("T")[0]
-                                                }
                                                 {...register(
                                                    "scholarship_2_deadline"
                                                 )}
@@ -449,12 +378,6 @@ function Course() {
                                                 Scholarship 3 Deadline
                                              </label>
                                              <input
-                                                type="date"
-                                                min={
-                                                   new Date()
-                                                      .toISOString()
-                                                      .split("T")[0]
-                                                }
                                                 {...register(
                                                    "scholarship_3_deadline"
                                                 )}
@@ -474,50 +397,22 @@ function Course() {
                                        </div>
                                     </div>
 
-                                    {isReview ? (
-                                       <div className="flex gap-3">
-                                          <button
-                                             type="button"
-                                             className={`mt-3 border border-green-800 hover:bg-green-800 hover:text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300`}
-                                             onClick={() =>
-                                                handleApproval(
-                                                   handleSubmit(onSubmit)
-                                                )
-                                             }
-                                          >
-                                             Approve
-                                          </button>
-
-                                          <button
-                                             type="button"
-                                             className={`mt-3 borderborder-orange-500 hover:bg-orange-500 hover:text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300`}
-                                             onClick={() => {
-                                                setReviewModalOpen(true);
-                                             }}
-                                          >
-                                             Sent Review
-                                          </button>
-                                       </div>
-                                    ) : (
-                                       <button
-                                          type="submit"
-                                          className="mt-3 bg-green-800 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
-                                       >
-                                          Add Course
-                                       </button>
-                                    )}
-
+                                    <button
+                                       type="submit"
+                                       className="mt-3 bg-green-800 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                    >
+                                       Add Course
+                                    </button>
                                     <button
                                        type="button"
                                        data-autofocus
                                        onClick={() => {
                                           setOpen(false);
-                                          setIsReview(false);
                                           setCurrentIndex(
                                              data.course_list.length
                                           );
                                        }}
-                                       className="mt-3 w-full justify-center rounded-md bg-red-600 text-white px-3 py-2 text-sm font-semibold"
+                                       className="mt-3 w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                                     >
                                        Cancel
                                     </button>
@@ -567,58 +462,6 @@ function Course() {
                                  >
                                     Cancel
                                  </button>
-                              </div>
-                           </div>
-                        </div>
-                     </DialogPanel>
-                  </div>
-               </div>
-            </Dialog>
-
-            {/* Review modal */}
-            <Dialog
-               open={reviewModalOpen}
-               onClose={() => {}}
-               className="relative z-10"
-            >
-               <DialogBackdrop
-                  transition
-                  className="fixed inset-0 bg-gray-500/75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
-               />
-               <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
-                  <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                     <DialogPanel
-                        transition
-                        className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:max-w-lg data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95"
-                     >
-                        <div className="bg-white px-4 pb-4 lg:pt-5 sm:p-6 sm:pb-4">
-                           <div>
-                              <div className="mt-3 text-center sm:mt-0 sm:text-left">
-                                 <DialogTitle className="text-2xl font-semibold text-[#0f6990] py-5">
-                                    Add review to counsellor
-                                 </DialogTitle>
-                                 <form onSubmit={handleSubmit(onSubmit)}>
-                                    <input
-                                       {...register("review")}
-                                       className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
-                                    />
-                                    <button
-                                       type="submit"
-                                       className="mt-3 bg-orange-500 text-white py-2 px-3 w-full rounded-md :hover:scale-110 transition ease-in-out duration-300"
-                                    >
-                                       Sent review
-                                    </button>
-                                    <button
-                                       type="button"
-                                       data-autofocus
-                                       onClick={() => {
-                                          setReviewModalOpen(false);
-                                       }}
-                                       className="mt-3 w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                                    >
-                                       Cancel
-                                    </button>
-                                 </form>
                               </div>
                            </div>
                         </div>

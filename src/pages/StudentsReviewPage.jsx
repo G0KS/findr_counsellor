@@ -7,15 +7,17 @@ import { useRole } from "../context/RoleContext";
 function StudentsReviewPage() {
    const navigate = useNavigate();
    const [pageIndex, setPageIndex] = useState(0);
-   const { currentUser } = useRole();
+   const { currentUser, roleProfile } = useRole();
    const [studentArray, setStudentArray] = useState([]);
+   const [filteredData, setFilteredData] = useState([]);
 
    const assignedTo = useFrappeGetDocList("ToDo", {
       fields: ["reference_name"],
-      filters: [["allocated_to", "=", currentUser]],
+      filters: [
+         ["allocated_to", "=", currentUser],
+         ["priority", "=", "Medium"], //Medium priority is set when the student is assigned for review
+      ],
    });
-
-   const [filters, setFilters] = useState([]);
 
    useEffect(() => {
       if (!assignedTo.isLoading && assignedTo.data) {
@@ -24,11 +26,7 @@ function StudentsReviewPage() {
          );
          setStudentArray(updatedArray);
       }
-      setFilters([
-         ["registration_fee", "=", "1"],
-         ["course_added", "=", "0"],
-      ]);
-   }, [assignedTo.isLoading]);
+   }, [assignedTo.data, roleProfile]);
 
    const { data, isLoading } = useFrappeGetDocList("Student", {
       fields: [
@@ -38,7 +36,10 @@ function StudentsReviewPage() {
          "education_program",
          "course_list",
       ],
-      filters,
+      filters: [
+         ["registration_fee", "=", "1"],
+         ["course_added", "=", "0"],
+      ],
       limit_start: pageIndex,
       limit: 18,
       orderBy: {
@@ -47,9 +48,16 @@ function StudentsReviewPage() {
       },
    });
 
-   const filteredData = data?.filter((item) =>
-      studentArray.includes(item.name)
-   );
+   useEffect(() => {
+      if (studentArray.length > 0) {
+         const filtering = data?.filter((item) =>
+            studentArray.includes(item.name)
+         );
+         setFilteredData(filtering || []);
+      } else {
+         setFilteredData([]); // If assignedTo has no students, keep it empty
+      }
+   }, [studentArray, data, roleProfile]);
 
    return (
       <div className="studentSection container lg:px-24 px-4 py-24">
@@ -60,22 +68,20 @@ function StudentsReviewPage() {
             &lt; Go back
          </button>
          <h1 className="text-4xl text-[#0f6990] ">Students List</h1>
-         {isLoading ? (
-            <div className="h-dvh flex justify-center align-middle">
-               <div className="loader"></div>
-            </div>
-         ) : (
+         {!assignedTo.isLoading && (
             <>
-               {data ? (
-                  <StudentList
-                     data={filteredData}
-                     pageIndex={pageIndex}
-                     setPageIndex={setPageIndex}
-                  />
-               ) : (
+               {isLoading ? (
                   <div className="h-dvh flex justify-center align-middle">
-                     <h1>No Students</h1>
+                     <div className="loader"></div>
                   </div>
+               ) : (
+                  <>
+                     <StudentList
+                        data={filteredData}
+                        pageIndex={pageIndex}
+                        setPageIndex={setPageIndex}
+                     />
+                  </>
                )}
             </>
          )}

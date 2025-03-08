@@ -41,26 +41,26 @@ function Course() {
       ],
    });
 
-   console.log(assignedTo.data);
-   
-
-   const { data, isLoading } = useFrappeGetDoc("Student", id);
+   const { data, isLoading, mutate } = useFrappeGetDoc("Student", id);
 
    const onSubmit = (formData) => {
       const courseListArray = data.course_list;
+      formData["status"] = "New";
 
-      isEdit
-         ? (courseListArray[editId] = formData)
-         : courseListArray.push(formData);
+      if (isEdit) {
+         courseListArray[editId] = formData;
+      } else {
+         courseListArray.push(formData);
+      }
 
       updateDoc("Student", id, {
          course_list: courseListArray,
-         course_added: 1,
       })
          .then(() => {
             toast.success("Course updated");
             setCurrentIndex(data.course_list.length);
             reset();
+            mutate();
          })
          .catch((err) => {
             toast.warning("Some internal error");
@@ -78,6 +78,7 @@ function Course() {
          .then(() => {
             toast.error("Course removed");
             setCurrentIndex(data.course_list.length);
+            mutate();
          })
          .catch((err) => {
             toast.warning("Some internal error");
@@ -122,6 +123,7 @@ function Course() {
    };
 
    const setEditValue = (course) => {
+      setValue("status", course.status);
       setValue("course_name", course.course_name);
       setValue("university", course.university);
       setValue("country", course.country);
@@ -207,14 +209,16 @@ function Course() {
                                  </span>
                               </td>
                               <td className="border border-white border-l-[#0f6990] ps-1">
-                                 {course.approved === 1 && (
+                                 {course.status == "Approved" && (
                                     <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-green-600">
                                        check
                                     </span>
                                  )}
-                                 <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-orange-500">
-                                    warning
-                                 </span>
+                                 {course.status == "Review" && (
+                                    <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-orange-500">
+                                       warning
+                                    </span>
+                                 )}
                               </td>
                            </tr>
                         ))}

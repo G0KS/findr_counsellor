@@ -19,33 +19,35 @@ function Student() {
    const { id } = useParams();
    const navigate = useNavigate();
    const [modalOpen, setModalOpen] = useState(false);
-   const [formData, setFormData] = useState({});
+   const [flagModalOpen, setFlagModalOpen] = useState(false);
+   const [counsellorData, setCounsellorData] = useState({});
+   const [flagReview, setFlagReview] = useState({});
 
    const { updateDoc } = useFrappeUpdateDoc();
    const { createDoc } = useFrappeCreateDoc();
 
-   const { data, isLoading } = useFrappeGetDoc("Student", id);
-   const { currentUser, roleProfile, userName } = useRole();
+   const { data, isLoading, mutate } = useFrappeGetDoc("Student", id);
+   const { currentUser, userName } = useRole();
 
-   const users = useFrappeGetDocList("User", {
+   const counsellors = useFrappeGetDocList("User", {
       fields: ["name", "full_name"],
       filters: [["role_profile_name", "=", "Counsellor"]],
    });
 
-   const getFormData = (e) => {
-      const { name, full_name } = JSON.parse(e.target.value);
-      setFormData({ name, full_name });
-   };
+   const masterAuditors = useFrappeGetDocList("User", {
+      fields: ["name", "full_name"],
+      filters: [["role_profile_name", "=", "Master Auditor"]],
+   });
 
    const handleAssign = (e) => {
       e.preventDefault();
       createDoc("ToDo", {
          assigned_by: currentUser,
          assigned_by_full_name: userName,
-         allocated_to: formData.name,
+         allocated_to: counsellorData.name,
          reference_type: "Student",
          reference_name: id,
-         description: `Assigned to ${formData.full_name}`,
+         description: `Assigned to ${counsellorData.full_name}`,
          priority: "Low",
       })
          .then(() => {
@@ -55,10 +57,41 @@ function Student() {
                .then(() => {
                   toast.success("Assigned successfully");
                   setModalOpen(false);
+                  mutate();
                })
                .catch((err) => console.error(err));
          })
          .catch((err) => console.error(err));
+   };
+
+   const handleAddFlag = async (e) => {
+      e.preventDefault();
+
+      if (masterAuditors) {
+         for (const masterAuditor of masterAuditors?.data || []) {
+            await createDoc("ToDo", {
+               assigned_by: currentUser,
+               assigned_by_full_name: userName,
+               allocated_to: masterAuditor.name,
+               reference_type: "Student",
+               reference_name: id,
+               description: flagReview,
+               priority: "High",
+            })
+               .then(() => {
+                  updateDoc("Student", id, {
+                     status: "Flagged",
+                  })
+                     .then(() => {
+                        toast.warning(`${id} has been flagged`);
+                        setFlagModalOpen(false);
+                        mutate();
+                     })
+                     .catch((err) => console.error(err));
+               })
+               .catch((err) => console.error(err));
+         }
+      }
    };
 
    return (
@@ -76,21 +109,35 @@ function Student() {
                   >
                      &lt; Go back
                   </button>
-                  {data.status == "New" ? (
-                     <button
-                        className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-orange-400 text-white transition ease-in-out duration-300"
-                        onClick={() => setModalOpen(true)}
-                     >
-                        Assign To
-                     </button>
-                  ) : (
-                     <button
-                        className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-[#0f6990] text-white transition ease-in-out duration-300"
-                        onClick={() => navigate(`/course/${id}`)}
-                     >
-                        Go To Courses
-                     </button>
-                  )}
+                  <div className="flex gap-3">
+                     {data.status == "Flagged" ? (
+                        <button className="text-lg shadow py-2 px-4 rounded-2xl bg-red-700 text-white transition ease-in-out duration-300">
+                           Flagged
+                        </button>
+                     ) : (
+                        <button
+                           className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-red-700 text-white transition ease-in-out duration-300"
+                           onClick={() => setFlagModalOpen(true)}
+                        >
+                           Flag to Master
+                        </button>
+                     )}
+                     {data.status == "New" ? (
+                        <button
+                           className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-orange-400 text-white transition ease-in-out duration-300"
+                           onClick={() => setModalOpen(true)}
+                        >
+                           Assign To
+                        </button>
+                     ) : (
+                        <button
+                           className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-[#0f6990] text-white transition ease-in-out duration-300"
+                           onClick={() => navigate(`/course/${id}`)}
+                        >
+                           Go To Courses
+                        </button>
+                     )}
+                  </div>
                </div>
                <h1 className="text-3xl text-center text-red-400 font-semibold">
                   {data.first_name} {data.last_name} is looking for{" "}
@@ -545,6 +592,8 @@ function Student() {
                </div>
             </div>
          )}
+
+         {/* Modal to assign counsellor */}
          <Dialog open={modalOpen} onClose={() => {}} className="relative z-10">
             <DialogBackdrop
                transition
@@ -565,19 +614,21 @@ function Student() {
                               <form>
                                  <select
                                     name="assign_to"
-                                    id=""
-                                    onChange={getFormData}
+                                    onChange={(e) =>
+                                       setCounsellorData(
+                                          counsellors?.data[e.target.value]
+                                       )
+                                    }
                                     className="border rounded-lg px-2 py-2 text-xl text-[#0f6990] focus:outline-none w-full"
                                  >
                                     <option hidden>Choose a counsellor</option>
-                                    {users?.data?.map((user, index) => (
-                                       <option
-                                          key={index}
-                                          value={JSON.stringify(user)}
-                                       >
-                                          {user.full_name}
-                                       </option>
-                                    ))}
+                                    {counsellors?.data?.map(
+                                       (counsellor, index) => (
+                                          <option key={index} value={index}>
+                                             {counsellor.full_name}
+                                          </option>
+                                       )
+                                    )}
                                  </select>
                                  <button
                                     type="submit"
@@ -590,6 +641,62 @@ function Student() {
                                     type="button"
                                     data-autofocus
                                     onClick={() => setModalOpen(false)}
+                                    className="mt-3 w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                 >
+                                    Cancel
+                                 </button>
+                              </form>
+                           </div>
+                        </div>
+                     </div>
+                  </DialogPanel>
+               </div>
+            </div>
+         </Dialog>
+
+         {/* Modal to add flag review */}
+         <Dialog
+            open={flagModalOpen}
+            onClose={() => {}}
+            className="relative z-10"
+         >
+            <DialogBackdrop
+               transition
+               className="fixed inset-0 bg-gray-500/75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
+            />
+            <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+               <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                  <DialogPanel
+                     transition
+                     className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:max-w-lg data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95"
+                  >
+                     <div className="bg-white px-4 pb-4 lg:pt-5 sm:p-6 sm:pb-4">
+                        <div>
+                           <div className="mt-3 text-center sm:mt-0 sm:text-left">
+                              <DialogTitle className="text-2xl font-semibold text-[#0f6990] py-5">
+                                 Description for flag
+                              </DialogTitle>
+                              <form>
+                                 <input
+                                    type="text"
+                                    name="flag_review"
+                                    className="border rounded-lg px-2 py-2 text-[#0f6990] focus:outline-none w-full"
+                                    placeholder="Write a description"
+                                    onChange={(e) =>
+                                       setFlagReview(e.target.value)
+                                    }
+                                 />
+                                 <button
+                                    type="submit"
+                                    onClick={handleAddFlag}
+                                    className="mt-3 bg-green-700 text-white py-2 px-3 w-full rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                 >
+                                    Confirm
+                                 </button>
+                                 <button
+                                    type="button"
+                                    data-autofocus
+                                    onClick={() => setFlagModalOpen(false)}
                                     className="mt-3 w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                                  >
                                     Cancel

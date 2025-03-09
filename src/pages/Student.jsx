@@ -13,7 +13,7 @@ import {
    DialogPanel,
    DialogTitle,
 } from "@headlessui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function Student() {
    const { id } = useParams();
@@ -22,12 +22,14 @@ function Student() {
    const [flagModalOpen, setFlagModalOpen] = useState(false);
    const [counsellorData, setCounsellorData] = useState({});
    const [flagReview, setFlagReview] = useState({});
+   const [counsellor, setCounsellor] = useState([]);
+
+   const { roleProfile, currentUser, userName } = useRole();
 
    const { updateDoc } = useFrappeUpdateDoc();
    const { createDoc } = useFrappeCreateDoc();
 
    const { data, isLoading, mutate } = useFrappeGetDoc("Student", id);
-   const { currentUser, userName } = useRole();
 
    const counsellors = useFrappeGetDocList("User", {
       fields: ["name", "full_name"],
@@ -38,6 +40,33 @@ function Student() {
       fields: ["name", "full_name"],
       filters: [["role_profile_name", "=", "Master Auditor"]],
    });
+
+   const assignedTo = useFrappeGetDocList("ToDo", {
+      fields: [
+         "reference_name",
+         "allocated_to",
+         "assigned_by",
+         "assigned_by_full_name",
+         "description",
+      ],
+      filters: [
+         ["assigned_by", "=", currentUser],
+         ["reference_name", "=", id],
+      ],
+   });
+
+   useEffect(() => {
+      if (assignedTo.data) {
+         if (assignedTo.data.length > 0) {
+            if (counsellors) {
+               const counsellorName = counsellors.data?.filter(
+                  (user) => user.name == assignedTo.data[0].allocated_to
+               );
+               setCounsellor(counsellorName[0].full_name);
+            }
+         }
+      }
+   }, [assignedTo.data]);
 
    const handleAssign = (e) => {
       e.preventDefault();
@@ -56,6 +85,7 @@ function Student() {
             })
                .then(() => {
                   toast.success("Assigned successfully");
+                  assignedTo.mutate();
                   setModalOpen(false);
                   mutate();
                })
@@ -84,6 +114,7 @@ function Student() {
                   })
                      .then(() => {
                         toast.warning(`${id} has been flagged`);
+                        navigate(-1);
                         setFlagModalOpen(false);
                         mutate();
                      })
@@ -115,12 +146,18 @@ function Student() {
                            Flagged
                         </button>
                      ) : (
-                        <button
-                           className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-red-700 text-white transition ease-in-out duration-300"
-                           onClick={() => setFlagModalOpen(true)}
-                        >
-                           Flag to Master
-                        </button>
+                        <>
+                           {data.status == "Course Given" ? (
+                              <></>
+                           ) : (
+                              <button
+                                 className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-red-700 text-white transition ease-in-out duration-300"
+                                 onClick={() => setFlagModalOpen(true)}
+                              >
+                                 Flag to Master
+                              </button>
+                           )}
+                        </>
                      )}
                      {data.status == "New" ? (
                         <button
@@ -139,10 +176,27 @@ function Student() {
                      )}
                   </div>
                </div>
-               <h1 className="text-3xl text-center text-red-400 font-semibold">
+               {roleProfile != "Counsellor" && counsellor != "" && (
+                  <div className="flex justify-center lg:justify-end ">
+                     <p className="mt-2 text-[#0F6990] lg:me-5 text-xl font-semibold">
+                        Assigned to : {counsellor}
+                     </p>
+                  </div>
+               )}
+               {data.status == "Flagged" && (
+                  <div className="mx-auto w-1/2 text-center text-white bg-orange-300 shadow-md rounded-lg p-5">
+                     <h1 className="text-xl w-full font-semibold">
+                        {/* {assignedTo?.data[0]?.description} */}
+                        <GetFlaggedReview />
+                     </h1>
+                  </div>
+               )}
+
+               <h1 className="text-3xl text-center text-red-400 font-semibold ">
                   {data.first_name} {data.last_name} is looking for{" "}
                   {data.education_program}
                </h1>
+
                <div id="personalDetailsCard" className="mb-10">
                   <h2 className="text-3xl lg:text-5xl text-[#0f6990] py-5">
                      Personal Details
@@ -238,7 +292,6 @@ function Student() {
                      </p>
                   </div>
                </div>
-
                <div id="educationalDetailsCard" className="my-10">
                   <h2 className="text-3xl lg:text-5xl text-[#0f6990] py-8">
                      Educational Details
@@ -480,7 +533,6 @@ function Student() {
                      </div>
                   </div>
                </div>
-
                <div id="experienceDetailsCard" className="my-10">
                   {data.internship_details.length > 0 ||
                   data.work_experience.length > 0 ? (
@@ -559,7 +611,6 @@ function Student() {
                      ""
                   )}
                </div>
-
                <div id="languageProficiencyDetailsCard" className="my-10">
                   {data.language_proficiency.length > 0 ? (
                      <div>
@@ -714,3 +765,14 @@ function Student() {
 }
 
 export default Student;
+
+const GetFlaggedReview = () => {
+   const { currentUser } = useRole();
+
+   const flaggedReview = useFrappeGetDocList("ToDo", {
+      fields: ["description"],
+      filters: [["allocated_to", "=", currentUser]],
+   });
+
+   console.log(flaggedReview.data);
+};

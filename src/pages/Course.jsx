@@ -55,6 +55,7 @@ function Course() {
          if (courseListArray[editId].status == "Review") {
             courseListArray[editId].review =
                "Course updated - " + courseListArray[editId].review;
+            courseListArray[editId].status = "New";
          }
       } else {
          courseListArray.push(formData);
@@ -67,8 +68,9 @@ function Course() {
          .then(() => {
             toast.success("Course updated");
             setCurrentIndex(data.course_list.length);
-            reset();
             mutate();
+            if (isEdit) handleNext();
+            else reset();
          })
          .catch((err) => {
             toast.warning("Some internal error");
@@ -109,7 +111,12 @@ function Course() {
    // To naviagte form through course list
    const handleNext = () => {
       if (currentIndex != null) {
-         if (currentIndex < data.course_list.length) {
+         if (isView) {
+            if (currentIndex < data.course_list.length - 1) {
+               setCurrentIndex(currentIndex + 1);
+               setEditId(currentIndex + 1);
+            }
+         } else if (currentIndex < data.course_list.length) {
             setCurrentIndex(currentIndex + 1);
             setEditId(currentIndex + 1);
          }
@@ -169,35 +176,54 @@ function Course() {
       todoName.data && setReviewName(todoName.data[0].name);
    }, [todoName.data]);
 
-   // To send courses for review
-   const handleSendCourse = () => {
-      let description = "Course added for review";
-      if (isView) description = "Review note added";
-
+   // To send review to auditor after adding course(s) by counsellor
+   const handleSendReview = () => {
       updateDoc("ToDo", reviewName, {
-         description,
+         description: "Course added for review",
          priority: "Medium",
       })
-         .then((res) => console.log(res))
-         .catch((err) => console.error(err));
+         .then((res) => {
+            toast.success(res.description);
+            console.log(res);
+         })
+         .catch((err) => {
+            toast.error("Some internal error");
+            console.error(err);
+         });
    };
 
-   // To handle course review when added/edited
+   // To handle course review by auditor
    const handleCourseReview = () => {
       const course_list = data.course_list;
       course_list[currentIndex].review = reviewDesc;
       course_list[currentIndex].status = "Review";
 
-      updateDoc("Student", id, {
-         course_list,
+      updateDoc("ToDo", reviewName, {
+         description: "Reviewed and send back for correction",
+         priority: "High",
       })
-         .then((res) => {
-            console.log(res);
-            mutate();
+         .then(() => {
+            updateDoc("Student", id, {
+               course_list,
+            })
+               .then(() => {
+                  toast.success("Send for update of course");
+                  setValue("review", reviewDesc);
+                  mutate();
+                  setReviewModalOpen(false);
+               })
+               .catch((err) => {
+                  toast.error("Some internal error");
+                  console.error(err);
+               });
          })
-         .catch((err) => console.log(err));
+         .catch((err) => {
+            toast.error("Some internal error");
+            console.error(err);
+         });
    };
 
+   // To approve each course in the course list
    const handleCourseApproval = () => {
       const course_list = data.course_list;
       course_list[currentIndex].status = "Approved";
@@ -209,9 +235,47 @@ function Course() {
          .then((res) => {
             console.log(res);
             handleNext();
+            setValue("review", "");
             mutate();
          })
          .catch((err) => console.log(err));
+   };
+
+   const handleSendCourse = (e) => {
+      e.preventDefault();
+
+      const notApprovedCourseList = data.course_list.filter(
+         (course) => course.status != "Approved"
+      );
+
+      if (notApprovedCourseList?.length > 0) {
+         toast.warning("Some course are still not approved");
+      } else if (data.course_list?.length == 0) {
+         toast.warning("Course list is empty");
+      } else {
+         updateDoc("Student", id, {
+            status: "Course Given",
+            course_added: 1,
+         })
+            .then(() => {
+               updateDoc("ToDo", reviewName, {
+                  description: "Course list has been sent",
+                  priority: "Low",
+                  status: "Closed",
+               })
+                  .then(() => {
+                     toast.success("Course List has been sent");
+                  })
+                  .catch((err) => {
+                     toast.error("Some internal error");
+                     console.error(err);
+                  });
+            })
+            .catch((err) => {
+               toast.warning("Some internal error");
+               console.error(err);
+            });
+      }
    };
 
    return (
@@ -224,16 +288,18 @@ function Course() {
                >
                   &lt; Go back
                </button>
-               <button
-                  className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-[#0f6990] text-white transition ease-in-out duration-300"
-                  onClick={() => {
-                     setOpen(true);
-                     setIsEdit(false);
-                     reset();
-                  }}
-               >
-                  Add Course
-               </button>
+               {data?.course_added == 0 && (
+                  <button
+                     className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-[#0f6990] text-white transition ease-in-out duration-300"
+                     onClick={() => {
+                        setOpen(true);
+                        setIsEdit(false);
+                        reset();
+                     }}
+                  >
+                     Add Course
+                  </button>
+               )}
             </div>
             <h2 className="text-3xl lg:text-5xl text-[#0f6990] py-5">
                Courses
@@ -245,19 +311,17 @@ function Course() {
             ) : (
                <>
                   <div id="courseListContainer" className="flex justify-center">
-                     <table className="table-auto text-white w-full text-xs md:text-base lg:w-4/5 text-center rounded">
-                        <thead className="">
+                     <table className="table-auto border border-[#0f6990] text-white w-full text-xs md:text-base lg:w-4/5 text-center rounded">
+                        <thead className="bg-[#0f6990]">
                            <tr>
-                              <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-1/3">
+                              <th className="lg:px-10 py-2 w-1/3">
                                  Course Name
                               </th>
-                              <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-2/3">
+                              <th className="lg:px-10 py-2 w-2/3">
                                  University
                               </th>
-                              <th className="bg-[#0f6990] border border-[#0f6990] px-4 py-2">
-                                 Action
-                              </th>
-                              <th></th>
+                              <th className="px-4 py-2">Action</th>
+                              <th className="px-4 py-2">Status</th>
                            </tr>
                         </thead>
                         <tbody className=" text-[#0f6990] border border-[#0f6990]">
@@ -266,21 +330,27 @@ function Course() {
                                  <td className="py-1">{course.course_name}</td>
                                  <td className="py-1">{course.university}</td>
                                  <td className="py-1 flex justify-evenly w-[120px]">
-                                    <span
-                                       className="flex justify-center align-middle material-symbols-outlined bg-red-300 rounded p-1 hover:bg-red-600 hover:text-white text-red-600 cursor-pointer"
-                                       onClick={() => {
-                                          setDeleteId(index);
-                                          setDeleteModalOpen(true);
-                                       }}
-                                    >
-                                       delete_forever
-                                    </span>
-                                    <span
-                                       className="flex justify-center align-middle material-symbols-outlined  rounded p-1 bg-green-300 hover:bg-green-600 hover:text-white text-green-800 cursor-pointer"
-                                       onClick={() => handleEdit(course, index)}
-                                    >
-                                       edit
-                                    </span>
+                                    {data.course_added == 0 && (
+                                       <>
+                                          <span
+                                             className="flex justify-center align-middle material-symbols-outlined bg-red-300 rounded p-1 hover:bg-red-600 hover:text-white text-red-600 cursor-pointer"
+                                             onClick={() => {
+                                                setDeleteId(index);
+                                                setDeleteModalOpen(true);
+                                             }}
+                                          >
+                                             delete_forever
+                                          </span>
+                                          <span
+                                             className="flex justify-center align-middle material-symbols-outlined  rounded p-1 bg-green-300 hover:bg-green-600 hover:text-white text-green-800 cursor-pointer"
+                                             onClick={() =>
+                                                handleEdit(course, index)
+                                             }
+                                          >
+                                             edit
+                                          </span>
+                                       </>
+                                    )}
                                     <span
                                        className="flex justify-center align-middle material-symbols-outlined  rounded p-1 bg-blue-300 hover:bg-[#0f6990] hover:text-white text-green-800 cursor-pointer"
                                        onClick={() => handleView(course, index)}
@@ -288,15 +358,15 @@ function Course() {
                                        visibility
                                     </span>
                                  </td>
-                                 <td className="border border-white border-l-[#0f6990] ps-1">
-                                    <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-[#0f6990]">
+                                 <td className="py-1">
+                                    <span className="material-symbols-outlined  rounded p-1 text-[#0f6990]">
                                        {course.status == "Approved" ? (
                                           "check"
                                        ) : (
                                           <>
                                              {course.status == "Review"
                                                 ? "warning"
-                                                : "hourglass_top"}
+                                                : "note_add"}
                                           </>
                                        )}
                                     </span>
@@ -306,16 +376,34 @@ function Course() {
                         </tbody>
                      </table>
                   </div>
-                  <div className="flex justify-center">
-                     {roleProfile == "Counsellor" &&
-                        data.course_list.length > 0 && (
-                           <button
-                              className="mt-5 lg:text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-green-500 text-white transition ease-in-out duration-300"
-                              onClick={handleSendCourse}
-                           >
-                              Send for review
-                           </button>
-                        )}
+                  <div className="flex justify-center gap-4">
+                     {data.course_list.length > 0 &&
+                     roleProfile == "Counsellor" ? (
+                        <button
+                           className="mt-5 lg:text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-green-500 text-white transition ease-in-out duration-300"
+                           onClick={handleSendReview}
+                        >
+                           Send for review
+                        </button>
+                     ) : (
+                        <>
+                           {data.course_added == 0 ? (
+                              <button
+                                 className="mt-5 lg:text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-green-500 text-white transition ease-in-out duration-300"
+                                 onClick={handleSendCourse}
+                              >
+                                 Send Course list
+                              </button>
+                           ) : (
+                              <h1
+                                 disabled
+                                 className="mt-5 lg:text-lg shadow bg-[#0f6990] text-white py-2 px-4 rounded-2xl"
+                              >
+                                 Course List Added
+                              </h1>
+                           )}
+                        </>
+                     )}
                   </div>
                </>
             )}
@@ -408,7 +496,7 @@ function Course() {
                                              />
                                           </div>
                                           {isEdit || isView ? (
-                                             <div className="bg-orange-300 p-2 text-slate-800 rounded-lg">
+                                             <div className="bg-orange-200 p-2 text-slate-800 rounded-lg">
                                                 <label className="font-bold">
                                                    Review
                                                 </label>
@@ -524,28 +612,44 @@ function Course() {
                                        </div>
                                     </div>
 
-                                    {roleProfile == "Auditor" ? (
+                                    {isView ? (
                                        <>
-                                          {isView && (
+                                          {roleProfile == "Auditor" && (
                                              <div className="flex gap-3">
-                                                <button
-                                                   type="button"
-                                                   className="mt-3 bg-orange-400 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
-                                                   onClick={() =>
-                                                      setReviewModalOpen(true)
-                                                   }
-                                                >
-                                                   Mark Review
-                                                </button>
-                                                <button
-                                                   type="button"
-                                                   className="mt-3 bg-green-800 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
-                                                   onClick={
-                                                      handleCourseApproval
-                                                   }
-                                                >
-                                                   Approve
-                                                </button>
+                                                {data.course_list[currentIndex]
+                                                   .status != "Approved" ? (
+                                                   <>
+                                                      <button
+                                                         type="button"
+                                                         className="mt-3 bg-orange-400 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                                         onClick={() =>
+                                                            setReviewModalOpen(
+                                                               true
+                                                            )
+                                                         }
+                                                      >
+                                                         Mark Review
+                                                      </button>
+                                                      <button
+                                                         type="button"
+                                                         className="mt-3 bg-green-800 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                                         onClick={
+                                                            handleCourseApproval
+                                                         }
+                                                      >
+                                                         Approve
+                                                      </button>
+                                                   </>
+                                                ) : (
+                                                   <>
+                                                      <button
+                                                         type="button"
+                                                         className="mt-3 bg-green-800 text-white py-2 px-3 w-full rounded-md "
+                                                      >
+                                                         Approved
+                                                      </button>
+                                                   </>
+                                                )}
                                              </div>
                                           )}
                                        </>

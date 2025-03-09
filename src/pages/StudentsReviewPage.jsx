@@ -8,27 +8,48 @@ function StudentsReviewPage() {
    const navigate = useNavigate();
    const [pageIndex, setPageIndex] = useState(0);
    const { currentUser, roleProfile } = useRole();
+   const [filters, setFilters] = useState([]);
    const [studentArray, setStudentArray] = useState([]);
-   const [filteredData, setFilteredData] = useState([]);
+
+   useEffect(() => {
+      if (roleProfile) {
+         if (roleProfile == "Auditor")
+            setFilters([
+               ["assigned_by", "=", currentUser],
+               ["priority", "=", "Medium"],
+            ]);
+         else if (roleProfile == "Counsellor")
+            setFilters([
+               ["allocated_to", "=", currentUser],
+               ["priority", "=", "High"],
+            ]);
+         else if (roleProfile == "Master Auditor")
+            setFilters([
+               ["allocated_to", "=", currentUser],
+               ["priority", "=", "High"],
+            ]);
+      }
+   }, [roleProfile]);
 
    const assignedTo = useFrappeGetDocList("ToDo", {
-      fields: ["reference_name"],
-      filters: [
-         ["allocated_to", "=", currentUser],
-         ["priority", "=", "Medium"], //Medium priority is set when the student is assigned for review
-      ],
+      fields: ["reference_name", "allocated_to", "assigned_by"],
+      filters,
    });
 
    useEffect(() => {
-      if (!assignedTo.isLoading && assignedTo.data) {
-         const updatedArray = assignedTo.data.map(
-            (item) => item.reference_name
-         );
-         setStudentArray(updatedArray);
+      if (assignedTo.data) {
+         if (assignedTo.data.length > 0) {
+            const students = assignedTo.data.map(
+               (student) => student.reference_name
+            );
+            setStudentArray(students);
+         } else {
+            setStudentArray([]);
+         }
       }
    }, [assignedTo.data, roleProfile]);
 
-   const { data, isLoading } = useFrappeGetDocList("Student", {
+   const { data, isLoading, mutate } = useFrappeGetDocList("Student", {
       fields: [
          "name",
          "first_name",
@@ -39,6 +60,7 @@ function StudentsReviewPage() {
       filters: [
          ["registration_fee", "=", "1"],
          ["course_added", "=", "0"],
+         ["name", "in", studentArray],
       ],
       limit_start: pageIndex,
       limit: 18,
@@ -49,15 +71,8 @@ function StudentsReviewPage() {
    });
 
    useEffect(() => {
-      if (studentArray.length > 0) {
-         const filtering = data?.filter((item) =>
-            studentArray.includes(item.name)
-         );
-         setFilteredData(filtering || []);
-      } else {
-         setFilteredData([]); // If assignedTo has no students, keep it empty
-      }
-   }, [studentArray, data, roleProfile]);
+      mutate();
+   }, [assignedTo.data, roleProfile, studentArray]);
 
    return (
       <div className="studentSection container lg:px-24 px-4 py-24">
@@ -77,7 +92,7 @@ function StudentsReviewPage() {
                ) : (
                   <>
                      <StudentList
-                        data={filteredData}
+                        data={data}
                         pageIndex={pageIndex}
                         setPageIndex={setPageIndex}
                      />

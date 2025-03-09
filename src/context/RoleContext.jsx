@@ -8,11 +8,11 @@ export const RoleProvider = ({ children }) => {
    const { data } = useFrappeGetDoc("User", currentUser || "");
    const [roleProfile, setRoleProfile] = useState("");
    const [userName, setUserName] = useState("");
-   
+
    useEffect(() => {
       if (data?.role_profile_name) {
-         setRoleProfile(data.role_profile_name);
-         setUserName(data.full_name);
+         setRoleProfile(data.role_profile_name || "");
+         setUserName(data.full_name || "");
       }
    }, [data]);
 

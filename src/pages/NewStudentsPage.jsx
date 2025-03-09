@@ -16,8 +16,9 @@ function NewStudentsPage() {
       filters: [
          ["allocated_to", "=", currentUser],
          ["priority", "=", "Low"], //Low priority is set when the student is assigned initially
+         ["status", "=", "Open"],
       ],
-   });   
+   });
 
    useEffect(() => {
       if (

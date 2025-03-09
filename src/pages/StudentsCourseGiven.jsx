@@ -20,6 +20,7 @@ function StudentsCourseGiven() {
          "last_name",
          "education_program",
          "course_list",
+         "course_added",
       ],
       filters: [
          ["registration_fee", "=", "1"],

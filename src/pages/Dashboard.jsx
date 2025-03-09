@@ -7,7 +7,7 @@ function Dashboard() {
    const [newlyPaid, setNewlyPaid] = useState({});
    const [existingStudent, setExistingStudent] = useState({});
    const [isLoading, setIsLoading] = useState(true);
-   const { roleProfile } = useRole();
+   const { roleProfile, userName } = useRole();
 
    const redirectLoginLink =
       "https://findrstudy.frappe.cloud/login?redirect-to=%2Fcounsellor#login";
@@ -44,7 +44,7 @@ function Dashboard() {
                partner_exchange
             </span>
          ),
-         title: "Attended Students",
+         title: "Course Given",
          description: `You have given courses to ${existingStudent} students`,
          location: "students/course-given",
          role: "Auditor",
@@ -80,9 +80,33 @@ function Dashboard() {
                partner_exchange
             </span>
          ),
+         title: "Newly Assigned Clients",
+         description: `You have new "n" assigned students to give course`,
+         location: "students/new",
+         role: "Master Auditor",
+      },
+      {
+         id: "7",
+         image: (
+            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
+               partner_exchange
+            </span>
+         ),
          title: "Flagged Clients",
          description: `Clients that have been flagged by Auditor or Counsellor`,
-         location: "students/auditor-review",
+         location: "students/review",
+         role: "Master Auditor",
+      },
+      {
+         id: "8",
+         image: (
+            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
+               partner_exchange
+            </span>
+         ),
+         title: "Attended Students",
+         description: `You have given courses to ${existingStudent} students`,
+         location: "students/course-given",
          role: "Master Auditor",
       },
    ];
@@ -100,7 +124,7 @@ function Dashboard() {
             />
             <div className="title">
                <p className="text-4xl lg:text-5xl  text-[#0f6990]">
-                  Welcome back {roleProfile}
+                  Welcome back {userName}
                </p>
             </div>
             {isLoading ? (

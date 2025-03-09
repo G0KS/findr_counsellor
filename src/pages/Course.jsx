@@ -9,8 +9,11 @@ import {
    DialogBackdrop,
    DialogPanel,
    DialogTitle,
+   Textarea,
 } from "@headlessui/react";
 import {
+   useFrappeCreateDoc,
+   useFrappeDeleteDoc,
    useFrappeGetDoc,
    useFrappeGetDocList,
    useFrappeUpdateDoc,
@@ -22,39 +25,44 @@ function Course() {
    const navigate = useNavigate();
    const { id } = useParams();
    const { register, handleSubmit, reset, setValue } = useForm();
-   const { roleProfile, currentUser } = useRole();
+   const { currentUser, roleProfile, userName } = useRole();
    const [open, setOpen] = useState(false);
+   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+   const [reviewModalOpen, setReviewModalOpen] = useState(false);
    const [deleteId, setDeleteId] = useState(0);
    const [editId, setEditId] = useState(0);
    const [isEdit, setIsEdit] = useState(false);
-   const [modal2open, setModal2open] = useState(false);
+   const [isView, setIsView] = useState(false);
    const [currentIndex, setCurrentIndex] = useState(null);
+   const [reviewName, setReviewName] = useState("");
+   const [reviewDesc, setReviewDesc] = useState("");
 
    const { updateDoc } = useFrappeUpdateDoc();
 
-   const assignedTo = useFrappeGetDocList("ToDo", {
-      fields: ["*"],
-      filters: [
-         ["allocated_to", "=", currentUser],
-         ["priority", "=", "Medium"], //Medium priority is set when the student is assigned for review
-         ["reference_name", "=", id],
-      ],
+   const todoName = useFrappeGetDocList("ToDo", {
+      fields: ["name"],
+      filters: [["reference_name", "=", id]],
    });
 
    const { data, isLoading, mutate } = useFrappeGetDoc("Student", id);
 
+   // Form submit for adding/editing course
    const onSubmit = (formData) => {
       const courseListArray = data.course_list;
-      formData["status"] = "New";
 
       if (isEdit) {
          courseListArray[editId] = formData;
+         if (courseListArray[editId].status == "Review") {
+            courseListArray[editId].review =
+               "Course updated - " + courseListArray[editId].review;
+         }
       } else {
          courseListArray.push(formData);
       }
 
       updateDoc("Student", id, {
          course_list: courseListArray,
+         status: "Review",
       })
          .then(() => {
             toast.success("Course updated");
@@ -68,8 +76,9 @@ function Course() {
          });
    };
 
+   // To delete course from course list
    const handleDelete = (index) => {
-      setModal2open(false);
+      setDeleteModalOpen(false);
       data.course_list.splice(index, 1);
       const newCourseList = data.course_list;
       updateDoc("Student", id, {
@@ -86,6 +95,7 @@ function Course() {
          });
    };
 
+   // To naviagte form through course list
    const handlePrevious = () => {
       if (currentIndex != null) {
          if (currentIndex > 0) {
@@ -96,6 +106,7 @@ function Course() {
          setCurrentIndex(data.course_list.length - 1);
    };
 
+   // To naviagte form through course list
    const handleNext = () => {
       if (currentIndex != null) {
          if (currentIndex < data.course_list.length) {
@@ -105,6 +116,7 @@ function Course() {
       }
    };
 
+   // To set currentIndex as well as editValue for form
    useEffect(() => {
       if (currentIndex === null) setCurrentIndex(data?.course_list.length);
       else if (data && currentIndex < data?.course_list.length) {
@@ -114,6 +126,15 @@ function Course() {
       }
    }, [currentIndex]);
 
+   // To view course using form modal
+   const handleView = (course, index) => {
+      setEditValue(course);
+      setCurrentIndex(index);
+      setIsView(true);
+      setOpen(true);
+   };
+
+   // To view course form for edit
    const handleEdit = (course, index) => {
       setEditValue(course);
       setCurrentIndex(index);
@@ -122,6 +143,7 @@ function Course() {
       setOpen(true);
    };
 
+   // To set values for form
    const setEditValue = (course) => {
       setValue("status", course.status);
       setValue("course_name", course.course_name);
@@ -139,6 +161,57 @@ function Course() {
       setValue("scholarship_3", course.scholarship_3);
       setValue("scholarship_3_deadline", course.scholarship_3_deadline);
       setValue("scholarship_3_link", course.scholarship_3_link);
+      setValue("review", course.review);
+   };
+
+   // To set name for review
+   useEffect(() => {
+      todoName.data && setReviewName(todoName.data[0].name);
+   }, [todoName.data]);
+
+   // To send courses for review
+   const handleSendCourse = () => {
+      let description = "Course added for review";
+      if (isView) description = "Review note added";
+
+      updateDoc("ToDo", reviewName, {
+         description,
+         priority: "Medium",
+      })
+         .then((res) => console.log(res))
+         .catch((err) => console.error(err));
+   };
+
+   // To handle course review when added/edited
+   const handleCourseReview = () => {
+      const course_list = data.course_list;
+      course_list[currentIndex].review = reviewDesc;
+      course_list[currentIndex].status = "Review";
+
+      updateDoc("Student", id, {
+         course_list,
+      })
+         .then((res) => {
+            console.log(res);
+            mutate();
+         })
+         .catch((err) => console.log(err));
+   };
+
+   const handleCourseApproval = () => {
+      const course_list = data.course_list;
+      course_list[currentIndex].status = "Approved";
+      course_list[currentIndex].review = "";
+
+      updateDoc("Student", id, {
+         course_list,
+      })
+         .then((res) => {
+            console.log(res);
+            handleNext();
+            mutate();
+         })
+         .catch((err) => console.log(err));
    };
 
    return (
@@ -170,64 +243,84 @@ function Course() {
                   <div className="loader"></div>
                </div>
             ) : (
-               <div id="courseListContainer" className="flex justify-center">
-                  <table className="table-auto text-white w-full text-xs md:text-base lg:w-4/5 text-center rounded">
-                     <thead className="">
-                        <tr>
-                           <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-1/3">
-                              Course Name
-                           </th>
-                           <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-2/3">
-                              University
-                           </th>
-                           <th className="bg-[#0f6990] border border-[#0f6990] px-4 py-2">
-                              Action
-                           </th>
-                           <th></th>
-                        </tr>
-                     </thead>
-                     <tbody className=" text-[#0f6990] border border-[#0f6990]">
-                        {data.course_list.map((course, index) => (
-                           <tr key={index}>
-                              <td className="py-1">{course.course_name}</td>
-                              <td className="py-1">{course.university}</td>
-                              <td className="py-1 flex justify-evenly">
-                                 <span
-                                    className="flex justify-center align-middle material-symbols-outlined bg-red-300 rounded p-1 hover:bg-red-600 hover:text-white text-red-600 cursor-pointer"
-                                    onClick={() => {
-                                       setDeleteId(index);
-                                       setModal2open(true);
-                                    }}
-                                 >
-                                    delete_forever
-                                 </span>
-                                 <span
-                                    className="flex justify-center align-middle material-symbols-outlined bg-green-300 rounded p-1 hover:bg-green-600 hover:text-white text-green-800 cursor-pointer"
-                                    onClick={() => handleEdit(course, index)}
-                                 >
-                                    edit
-                                 </span>
-                              </td>
-                              <td className="border border-white border-l-[#0f6990] ps-1">
-                                 {course.status == "Approved" && (
-                                    <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-green-600">
-                                       check
-                                    </span>
-                                 )}
-                                 {course.status == "Review" && (
-                                    <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-orange-500">
-                                       warning
-                                    </span>
-                                 )}
-                              </td>
+               <>
+                  <div id="courseListContainer" className="flex justify-center">
+                     <table className="table-auto text-white w-full text-xs md:text-base lg:w-4/5 text-center rounded">
+                        <thead className="">
+                           <tr>
+                              <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-1/3">
+                                 Course Name
+                              </th>
+                              <th className="bg-[#0f6990] border border-[#0f6990] lg:px-10 py-2 w-2/3">
+                                 University
+                              </th>
+                              <th className="bg-[#0f6990] border border-[#0f6990] px-4 py-2">
+                                 Action
+                              </th>
+                              <th></th>
                            </tr>
-                        ))}
-                     </tbody>
-                  </table>
-               </div>
+                        </thead>
+                        <tbody className=" text-[#0f6990] border border-[#0f6990]">
+                           {data.course_list.map((course, index) => (
+                              <tr key={index}>
+                                 <td className="py-1">{course.course_name}</td>
+                                 <td className="py-1">{course.university}</td>
+                                 <td className="py-1 flex justify-evenly w-[120px]">
+                                    <span
+                                       className="flex justify-center align-middle material-symbols-outlined bg-red-300 rounded p-1 hover:bg-red-600 hover:text-white text-red-600 cursor-pointer"
+                                       onClick={() => {
+                                          setDeleteId(index);
+                                          setDeleteModalOpen(true);
+                                       }}
+                                    >
+                                       delete_forever
+                                    </span>
+                                    <span
+                                       className="flex justify-center align-middle material-symbols-outlined  rounded p-1 bg-green-300 hover:bg-green-600 hover:text-white text-green-800 cursor-pointer"
+                                       onClick={() => handleEdit(course, index)}
+                                    >
+                                       edit
+                                    </span>
+                                    <span
+                                       className="flex justify-center align-middle material-symbols-outlined  rounded p-1 bg-blue-300 hover:bg-[#0f6990] hover:text-white text-green-800 cursor-pointer"
+                                       onClick={() => handleView(course, index)}
+                                    >
+                                       visibility
+                                    </span>
+                                 </td>
+                                 <td className="border border-white border-l-[#0f6990] ps-1">
+                                    <span className="flex justify-center align-middle material-symbols-outlined  rounded p-1 text-[#0f6990]">
+                                       {course.status == "Approved" ? (
+                                          "check"
+                                       ) : (
+                                          <>
+                                             {course.status == "Review"
+                                                ? "warning"
+                                                : "hourglass_top"}
+                                          </>
+                                       )}
+                                    </span>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </div>
+                  <div className="flex justify-center">
+                     {roleProfile == "Counsellor" &&
+                        data.course_list.length > 0 && (
+                           <button
+                              className="mt-5 lg:text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-green-500 text-white transition ease-in-out duration-300"
+                              onClick={handleSendCourse}
+                           >
+                              Send for review
+                           </button>
+                        )}
+                  </div>
+               </>
             )}
 
-            {/* Course Modal Dialog Box */}
+            {/*Course Modal Dialog Box */}
             <Dialog open={open} onClose={() => {}} className="relative z-10">
                <DialogBackdrop
                   transition
@@ -264,6 +357,7 @@ function Course() {
                                           <div>
                                              <label>Course Name</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("course_name")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -272,6 +366,7 @@ function Course() {
                                           <div>
                                              <label>University Name</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("university")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -280,6 +375,7 @@ function Course() {
                                           <div>
                                              <label>Country</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("country")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -288,6 +384,7 @@ function Course() {
                                           <div>
                                              <label>Tution Fee</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("tution_fee")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -296,6 +393,7 @@ function Course() {
                                           <div>
                                              <label>Course Link</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("course_link")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -304,16 +402,33 @@ function Course() {
                                           <div>
                                              <label>Course Deadline</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("course_deadline")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
                                           </div>
+                                          {isEdit || isView ? (
+                                             <div className="bg-orange-300 p-2 text-slate-800 rounded-lg">
+                                                <label className="font-bold">
+                                                   Review
+                                                </label>
+                                                <textarea
+                                                   disabled
+                                                   rows={6}
+                                                   className=" rounded-lg px-2 focus:outline-none w-full"
+                                                   {...register("review")}
+                                                ></textarea>
+                                             </div>
+                                          ) : (
+                                             <></>
+                                          )}
                                        </div>
 
                                        <div className="lg:space-y-1 space-y-3">
                                           <div>
                                              <label>Scholarship 1</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("scholarship")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -324,6 +439,7 @@ function Course() {
                                                 Scholarship 1 Deadline
                                              </label>
                                              <input
+                                                disabled={isView}
                                                 {...register(
                                                    "scholarship_deadline"
                                                 )}
@@ -334,6 +450,7 @@ function Course() {
                                           <div>
                                              <label>Scholarship 1 Link</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("how_to")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -342,6 +459,7 @@ function Course() {
                                           <div>
                                              <label>Scholarship 2</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("scholarship_2")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -352,6 +470,7 @@ function Course() {
                                                 Scholarship 2 Deadline
                                              </label>
                                              <input
+                                                disabled={isView}
                                                 {...register(
                                                    "scholarship_2_deadline"
                                                 )}
@@ -362,6 +481,7 @@ function Course() {
                                           <div>
                                              <label>Scholarship 2 Link</label>
                                              <input
+                                                disabled={isView}
                                                 {...register(
                                                    "scholarship_2_link"
                                                 )}
@@ -372,6 +492,7 @@ function Course() {
                                           <div>
                                              <label>Scholarship 3</label>
                                              <input
+                                                disabled={isView}
                                                 {...register("scholarship_3")}
                                                 className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
                                              />
@@ -382,6 +503,7 @@ function Course() {
                                                 Scholarship 3 Deadline
                                              </label>
                                              <input
+                                                disabled={isView}
                                                 {...register(
                                                    "scholarship_3_deadline"
                                                 )}
@@ -392,6 +514,7 @@ function Course() {
                                           <div>
                                              <label>Scholarship 3 Link</label>
                                              <input
+                                                disabled={isView}
                                                 {...register(
                                                    "scholarship_3_link"
                                                 )}
@@ -401,17 +524,46 @@ function Course() {
                                        </div>
                                     </div>
 
-                                    <button
-                                       type="submit"
-                                       className="mt-3 bg-green-800 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
-                                    >
-                                       Add Course
-                                    </button>
+                                    {roleProfile == "Auditor" ? (
+                                       <>
+                                          {isView && (
+                                             <div className="flex gap-3">
+                                                <button
+                                                   type="button"
+                                                   className="mt-3 bg-orange-400 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                                   onClick={() =>
+                                                      setReviewModalOpen(true)
+                                                   }
+                                                >
+                                                   Mark Review
+                                                </button>
+                                                <button
+                                                   type="button"
+                                                   className="mt-3 bg-green-800 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                                   onClick={
+                                                      handleCourseApproval
+                                                   }
+                                                >
+                                                   Approve
+                                                </button>
+                                             </div>
+                                          )}
+                                       </>
+                                    ) : (
+                                       <button
+                                          type="submit"
+                                          className="mt-3 bg-green-800 text-white py-2 px-3 w-full  rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                       >
+                                          Add Course
+                                       </button>
+                                    )}
+
                                     <button
                                        type="button"
                                        data-autofocus
                                        onClick={() => {
                                           setOpen(false);
+                                          setIsView(false);
                                           setCurrentIndex(
                                              data.course_list.length
                                           );
@@ -431,7 +583,7 @@ function Course() {
 
             {/* Course delete confirmation dialog box */}
             <Dialog
-               open={modal2open}
+               open={deleteModalOpen}
                onClose={() => {}}
                className="relative z-10"
             >
@@ -461,11 +613,66 @@ function Course() {
                                  <button
                                     type="button"
                                     data-autofocus
-                                    onClick={() => setModal2open(false)}
+                                    onClick={() => setDeleteModalOpen(false)}
                                     className="mt-3 w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                                  >
                                     Cancel
                                  </button>
+                              </div>
+                           </div>
+                        </div>
+                     </DialogPanel>
+                  </div>
+               </div>
+            </Dialog>
+
+            {/* Modal for adding review */}
+            <Dialog
+               open={reviewModalOpen}
+               onClose={() => {}}
+               className="relative z-10"
+            >
+               <DialogBackdrop
+                  transition
+                  className="fixed inset-0 bg-gray-500/75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
+               />
+               <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                  <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                     <DialogPanel
+                        transition
+                        className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:max-w-lg data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95"
+                     >
+                        <div className="bg-white px-4 pb-4 lg:pt-5 sm:p-6 sm:pb-4">
+                           <div>
+                              <div className="mt-3 text-center sm:mt-0 sm:text-left">
+                                 <DialogTitle className="text-2xl font-semibold text-[#0f6990] py-5">
+                                    Add a review
+                                 </DialogTitle>
+                                 <form action="">
+                                    <input
+                                       type="text"
+                                       name="description"
+                                       className="border rounded-lg px-2 py-1 text-[#0f6990] focus:outline-none w-full"
+                                       onChange={(e) =>
+                                          setReviewDesc(e.target.value)
+                                       }
+                                    />
+                                    <button
+                                       type="button"
+                                       onClick={handleCourseReview}
+                                       className="mt-3 bg-orange-400 text-white py-2 px-3 w-full rounded-md :hover:scale-110 transition ease-in-out duration-300"
+                                    >
+                                       Send Review
+                                    </button>
+                                    <button
+                                       type="button"
+                                       data-autofocus
+                                       onClick={() => setReviewModalOpen(false)}
+                                       className="mt-3 w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                    >
+                                       Cancel
+                                    </button>
+                                 </form>
                               </div>
                            </div>
                         </div>

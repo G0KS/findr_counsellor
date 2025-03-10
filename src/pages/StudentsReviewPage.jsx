@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import StudentList from "../components/StudentList";
-import { useFrappeGetDocList } from "frappe-react-sdk";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "../context/RoleContext";
 import GetReviewData from "../api/GetReviewData";
+import GetStudentList from "../api/GetStudentList";
 
 function StudentsReviewPage() {
    const navigate = useNavigate();
@@ -21,53 +21,52 @@ function StudentsReviewPage() {
 
    useEffect(() => {
       if (roleProfile == "Auditor") {
-         setFilters([
+         setReviewFilters([
             ["assigned_by", "=", currentUser],
             ["priority", "=", "Medium"],
          ]);
          setFetchReview(true);
       } else if (roleProfile == "Counsellor") {
-         setFilters([
+         setReviewFilters([
             ["allocated_to", "=", currentUser],
-            ["priority", "=", "High"],
+            ["priority", "=", "Medium"],
          ]);
          setFetchReview(true);
       } else if (roleProfile == "Master Auditor") {
-         setFilters([
-            ["allocated_to", "=", currentUser],
-            ["priority", "=", "High"],
-         ]);
+         setReviewFilters([["priority", "=", "High"]]);
          setFetchReview(true);
       }
    }, [roleProfile]);
 
    useEffect(() => {
       if (reviewData) {
-         const filteredData = reviewData.map((review) => review.reference_name);
-         console.log(filteredData);
+         const filteredStudentData = reviewData.map(
+            (review) => review.reference_name
+         );
+
+         if (reviewData[0]?.priority == "High") {
+            setFilters([
+               ["registration_fee", "=", "1"],
+               ["course_added", "=", "0"],
+               ["status", "=", "Flagged"],
+               ["name", "in", filteredStudentData],
+            ]);
+         } else {
+            setFilters([
+               ["registration_fee", "=", "1"],
+               ["course_added", "=", "0"],
+               ["status", "=", "Review"],
+               ["name", "in", filteredStudentData],
+            ]);
+         }
+         setFetchStudentList(true);
       }
    }, [reviewData]);
 
-   // const { data, isLoading, mutate } = useFrappeGetDocList("Student", {
-   //    fields: [
-   //       "name",
-   //       "first_name",
-   //       "last_name",
-   //       "education_program",
-   //       "course_list",
-   //    ],
-   //    filters: [
-   //       ["registration_fee", "=", "1"],
-   //       ["course_added", "=", "0"],
-   //       ["name", "in", studentArray],
-   //    ],
-   //    limit_start: pageIndex,
-   //    limit: 18,
-   //    orderBy: {
-   //       field: "modified",
-   //       order: "asc",
-   //    },
-   // });
+   useEffect(() => {
+      if (studentList) setData(studentList);
+      else setData([]);
+   }, [studentList]);
 
    return (
       <div className="studentSection container lg:px-24 px-4 py-24">
@@ -89,6 +88,13 @@ function StudentsReviewPage() {
                <GetReviewData
                   filters={reviewFilters}
                   setReviewData={setReviewData}
+               />
+            )}
+            {fetchStudentList && (
+               <GetStudentList
+                  filters={filters}
+                  pageIndex={pageIndex}
+                  setStudentList={setStudentList}
                />
             )}
          </>

@@ -4,9 +4,10 @@ import React from "react";
 function GetAuditors() {
    const { data } = useFrappeGetDocList("User", {
       fields: ["name", "full_name"],
-      filters: [["role_profile_name", "=", "Counsellor"]],
+      filters: [["role_profile_name", "=", "Auditors"]],
    });
-   return <div>GetAuditors</div>;
+
+   return null;
 }
 
 export default GetAuditors;

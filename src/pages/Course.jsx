@@ -200,11 +200,12 @@ function Course() {
 
       updateDoc("ToDo", reviewName, {
          description: "Reviewed and send back for correction",
-         priority: "High",
+         priority: "Medium",
       })
          .then(() => {
             updateDoc("Student", id, {
                course_list,
+               status: "Review",
             })
                .then(() => {
                   toast.success("Send for update of course");
@@ -261,7 +262,6 @@ function Course() {
                updateDoc("ToDo", reviewName, {
                   description: "Course list has been sent",
                   priority: "Low",
-                  status: "Closed",
                })
                   .then(() => {
                      toast.success("Course List has been sent");

@@ -1,10 +1,15 @@
 import { useFrappeGetDoc } from "frappe-react-sdk";
-import React from "react";
+import React, { useEffect } from "react";
 
-function GetStudentData({ id }) {
-   const { data, isLoading, mutate } = useFrappeGetDoc("Student", id);
+function GetStudentData({ id, setStudentData }) {
+   const { data } = useFrappeGetDoc("Student", id);
 
-   return <div>GetStudentData</div>;
+   useEffect(() => {
+      if (data) {
+         setStudentData(data);
+      }
+   }, [data]);
+   return null;
 }
 
 export default GetStudentData;

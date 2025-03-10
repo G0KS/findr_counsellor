@@ -20,6 +20,9 @@ function GetStudentList({ filters, pageIndex, setStudentList }) {
       },
    });   
 
+   console.log(filters);
+   
+
    useEffect(() => {
       if (data) setStudentList(data);
    }, [data]);

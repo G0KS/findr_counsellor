@@ -1,114 +1,97 @@
 import { useEffect, useState } from "react";
 import StudentList from "../components/StudentList";
-import { useFrappeGetDocList } from "frappe-react-sdk";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "../context/RoleContext";
+import GetReviewData from "../api/GetReviewData";
+import GetStudentList from "../api/GetStudentList";
 
 function NewStudentsPage() {
    const navigate = useNavigate();
    const [pageIndex, setPageIndex] = useState(0);
    const { currentUser, roleProfile } = useRole();
-   const [studentArray, setStudentArray] = useState([]);
-   const [filteredData, setFilteredData] = useState([]);
 
-   const assignedTo = useFrappeGetDocList("ToDo", {
-      fields: ["reference_name"],
-      filters: [
-         ["allocated_to", "=", currentUser],
-         ["priority", "=", "Low"], //Low priority is set when the student is assigned initially
-         ["status", "=", "Open"],
-      ],
-   });
+   const [filters, setFilters] = useState([]);
+   const [reviewFilters, setReviewFilters] = useState([]);
+
+   const [fetchReview, setFetchReview] = useState(false);
+   const [fetchStudentList, setFetchStudentList] = useState(false);
+   const [data, setData] = useState([]);
+   const [reviewData, setReviewData] = useState([]);
+   const [studentList, setStudentList] = useState([]);
 
    useEffect(() => {
-      if (
-         roleProfile === "Counsellor" &&
-         !assignedTo.isLoading &&
-         assignedTo.data
-      ) {
-         const updatedArray = assignedTo.data.map(
-            (item) => item.reference_name
-         );
-         setStudentArray(updatedArray);
+      if (roleProfile == "Counsellor") {
+         setReviewFilters([
+            ["allocated_to", "=", currentUser],
+            ["priority", "=", "Low"], //Low priority is set when the student is assigned initially
+            ["status", "=", "Open"],
+         ]);
+         setFetchReview(true);
+      } else {
+         setFilters([
+            ["registration_fee", "=", "1"],
+            ["course_added", "=", "0"],
+            ["status", "=", "New"],
+         ]);
+         setFetchStudentList(true);
       }
-   }, [assignedTo.data, roleProfile]);
-
-   const [filters, setFilters] = useState([
-      ["registration_fee", "=", "1"],
-      ["course_added", "=", "0"],
-   ]);
-
-   const { data, isLoading } = useFrappeGetDocList("Student", {
-      fields: [
-         "name",
-         "first_name",
-         "last_name",
-         "education_program",
-         "course_list",
-         "status",
-      ],
-      filters,
-      limit_start: pageIndex,
-      limit: 18,
-      orderBy: {
-         field: "modified",
-         order: "asc",
-      },
-   });
+   }, [roleProfile, currentUser]);
 
    useEffect(() => {
-      if (roleProfile === "Counsellor") {
-         if (studentArray.length > 0) {
-            const filtering = data?.filter((item) =>
-               studentArray.includes(item.name)
-            );
-            setFilteredData(filtering || []);
+      if (fetchReview) {
+         if (reviewData) {
             setFilters([
                ["registration_fee", "=", "1"],
                ["course_added", "=", "0"],
                ["status", "=", "Assigned"],
             ]);
          } else {
-            setFilteredData([]); // If assignedTo has no students, keep it empty
             setFilters([
                ["registration_fee", "=", "1"],
                ["course_added", "=", "0"],
                ["status", "=", "New"],
             ]);
          }
-      } else {
-         setFilteredData(data || []); // For other roles, show all students
-         setFilters([
-            ["registration_fee", "=", "1"],
-            ["course_added", "=", "0"],
-            ["status", "=", "New"],
-         ]);
+         setFetchStudentList(true);
       }
-   }, [studentArray, data, roleProfile]);
+   }, [reviewData]);
+
+   useEffect(() => {
+      if (studentList) setData(studentList);
+      else setData([]);
+   }, [studentList]);
 
    return (
-      <div className="studentSection container lg:px-24 px-4 py-24">
-         <button
-            className="text-[#0f6990] text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 hover:bg-[#0f6990] hover:text-white transition ease-in-out duration-300"
-            onClick={() => navigate(-1)}
-         >
-            &lt; Go back
-         </button>
-         <h1 className="text-4xl text-[#0f6990] ">Students List</h1>
-         {isLoading ? (
-            <div className="h-dvh flex justify-center align-middle">
-               <div className="loader"></div>
-            </div>
-         ) : (
-            <>
-               <StudentList
-                  data={filteredData}
-                  pageIndex={pageIndex}
-                  setPageIndex={setPageIndex}
-               />
-            </>
+      <>
+         <div className="studentSection container lg:px-24 px-4 py-24">
+            <button
+               className="text-[#0f6990] text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 hover:bg-[#0f6990] hover:text-white transition ease-in-out duration-300"
+               onClick={() => navigate(-1)}
+            >
+               &lt; Go back
+            </button>
+            <h1 className="text-4xl text-[#0f6990] ">Students List</h1>
+
+            <StudentList
+               data={data}
+               pageIndex={pageIndex}
+               setPageIndex={setPageIndex}
+            />
+         </div>
+         {fetchReview && (
+            <GetReviewData
+               filters={reviewFilters}
+               setReviewData={setReviewData}
+            />
          )}
-      </div>
+         {fetchStudentList && (
+            <GetStudentList
+               filters={filters}
+               pageIndex={pageIndex}
+               setStudentList={setStudentList}
+            />
+         )}
+      </>
    );
 }
 

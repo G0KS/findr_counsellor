@@ -36,6 +36,8 @@ function Student() {
       filters: [["role_profile_name", "=", "Counsellor"]],
    });
 
+   console.log(counsellors);
+
    const masterAuditors = useFrappeGetDocList("User", {
       fields: ["name", "full_name"],
       filters: [["role_profile_name", "=", "Master Auditor"]],

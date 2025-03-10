@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 
 function StudentList({ data, pageIndex, setPageIndex }) {
    const navigate = useNavigate();
-
-
    return (
       <>
          {data.length > 0 ? (

@@ -11,7 +11,7 @@ function GetCounsellorsList({ setCounsellors }) {
       if (data) setCounsellors(data);
    }, [data]);
 
-   return <div>GetCounsellors</div>;
+   return null
 }
 
 export default GetCounsellorsList;

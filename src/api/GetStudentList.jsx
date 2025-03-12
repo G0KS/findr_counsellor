@@ -18,10 +18,7 @@ function GetStudentList({ filters, pageIndex, setStudentList }) {
          field: "modified",
          order: "asc",
       },
-   });   
-
-   console.log(filters);
-   
+   });      
 
    useEffect(() => {
       if (data) setStudentList(data);

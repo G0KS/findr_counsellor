@@ -1,13 +1,15 @@
 import Card from "../components/Card";
-import { useFrappeGetDocCount } from "frappe-react-sdk";
 import { useEffect, useState } from "react";
 import { useRole } from "../context/RoleContext";
+import { useFrappeCreateDoc } from "frappe-react-sdk";
 
 function Dashboard() {
-   const [newlyPaid, setNewlyPaid] = useState({});
-   const [existingStudent, setExistingStudent] = useState({});
-   const [isLoading, setIsLoading] = useState(true);
    const { roleProfile, userName } = useRole();
+   const [isLoading, setIsLoading] = useState(true);
+
+   useEffect(() => {
+      if (roleProfile) setIsLoading(false);
+   }, [roleProfile]);
 
    const redirectLoginLink =
       "https://findrstudy.frappe.cloud/login?redirect-to=%2Fcounsellor#login";
@@ -16,112 +18,114 @@ function Dashboard() {
       {
          id: "1",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               group_add
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center items-center">
+               person_add
             </span>
          ),
-         title: "New Clients",
-         description: `We have ${newlyPaid} new students. Assign them to counsellors`,
+         title: "New Students",
+         description: `Newly registered students`,
          location: "students/new",
          role: "Auditor",
       },
       {
          id: "2",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               partner_exchange
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center items-center">
+               pending_actions
             </span>
          ),
-         title: "Auditing",
-         description: `Courses has been added for auditing`,
+         title: "Review Students",
+         description: `Courses has been added for reviewing`,
          location: "students/review",
          role: "Auditor",
       },
       {
          id: "3",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               partner_exchange
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center items-center">
+               groups
             </span>
          ),
-         title: "Course Given",
-         description: `You have given courses to ${existingStudent} students`,
-         location: "students/course-given",
+         title: "Feedback Students",
+         description: `Students who gave a feedback to review`,
+         location: "students/feedback-review",
          role: "Auditor",
       },
       {
          id: "4",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               partner_exchange
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center items-center">
+               person_add
             </span>
          ),
-         title: "Newly Assigned Clients",
-         description: `You have new "n" assigned students to give course`,
+         title: "New Students",
+         description: `Newly Assigned Students`,
          location: "students/new",
          role: "Counsellor",
       },
       {
          id: "5",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               partner_exchange
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center items-center">
+               pending_actions
             </span>
          ),
-         title: "Review Clients",
-         description: `You have "m" client reviews`,
+         title: "Review Students",
+         description: `Course review pending students list`,
          location: "students/review",
          role: "Counsellor",
       },
       {
          id: "6",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               partner_exchange
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center items-center">
+               groups
             </span>
          ),
-         title: "Newly Assigned Clients",
-         description: `You have new "n" assigned students to give course`,
-         location: "students/new",
+         title: "All Students",
+         description: `All registered students`,
+         location: "students",
          role: "Master Auditor",
       },
       {
          id: "7",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               partner_exchange
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center items-center">
+               flag_2
             </span>
          ),
-         title: "Flagged Clients",
-         description: `Clients that have been flagged by Auditor or Counsellor`,
+         title: "Students on hold",
+         description: `Students that are on hold`,
          location: "students/review",
          role: "Master Auditor",
       },
       {
          id: "8",
          image: (
-            <span className="material-symbols-outlined text-green-800 text-9xl text-center flex h-full justify-center align-middle">
-               partner_exchange
+            <span className="material-symbols-outlined text-green-800 text-8xl text-center flex h-full justify-center align-middle">
+               person_add
             </span>
          ),
-         title: "Attended Students",
-         description: `You have given courses to ${existingStudent} students`,
+         title: "Course Given",
+         description: `Course Given students list`,
          location: "students/course-given",
          role: "Master Auditor",
       },
    ];
 
+   const { createDoc } = useFrappeCreateDoc();
+
+   const check = () => {
+      createDoc("Student", {
+         registration_fee: 1,
+      })
+         .then((res) => console.log(res))
+         .catch((err) => console.error(err));
+   };
+
    return (
       <div className="container lg:px-24 px-4 py-24 h-dvh">
          <>
-            <GetNewStudentsCount
-               setNewlyPaid={setNewlyPaid}
-               setIsLoading={setIsLoading}
-            />
-            <GetExisitngStudentsCount
-               setExistingStudent={setExistingStudent}
-               setIsLoading={setIsLoading}
-            />
             <div className="title">
                <p className="text-4xl lg:text-5xl  text-[#0f6990]">
                   Welcome back {userName}
@@ -132,15 +136,23 @@ function Dashboard() {
                   <div className="loader"></div>
                </div>
             ) : (
-               <div className="cardLayout flex flex-wrap justify-evenly align-middle gap-2">
-                  {/* students list */}
-                  {cards.map(
-                     (card) =>
-                        card.role === roleProfile && (
-                           <Card key={card.id} card={card} />
-                        )
-                  )}
-               </div>
+               <>
+                  <div className="cardLayout flex flex-wrap justify-evenly align-middle gap-2">
+                     {/* students list */}
+                     {cards.map(
+                        (card) =>
+                           card.role === roleProfile && (
+                              <Card key={card.id} card={card} />
+                           )
+                     )}
+                  </div>
+                  <button
+                     className="text-lg shadow py-2 px-4 rounded-2xl hover:scale-110 bg-[#0f6990] text-white transition ease-in-out duration-300"
+                     onClick={check}
+                  >
+                     Create Student
+                  </button>
+               </>
             )}
          </>
       </div>
@@ -211,35 +223,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-
-const GetNewStudentsCount = ({ setNewlyPaid, setIsLoading }) => {
-   const { data, isLoading } = useFrappeGetDocCount("Student", [
-      ["registration_fee", "=", "1"],
-      ["course_added", "=", "0"],
-   ]);
-
-   useEffect(() => {
-      setIsLoading(isLoading);
-      if (!isLoading) {
-         setNewlyPaid(data);
-      }
-   }, [data, isLoading, setNewlyPaid, setIsLoading]); // Dependencies to track
-
-   return null; // No UI needed
-};
-
-const GetExisitngStudentsCount = ({ setExistingStudent, setIsLoading }) => {
-   const { data, isLoading } = useFrappeGetDocCount("Student", [
-      ["registration_fee", "=", "1"],
-      ["course_added", "=", "1"],
-   ]);
-
-   useEffect(() => {
-      setIsLoading(isLoading);
-      if (!isLoading) {
-         setExistingStudent(data);
-      }
-   }, [data, isLoading, setExistingStudent, setIsLoading]); // Dependencies to track
-
-   return null;
-};

@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useRole } from "../context/RoleContext";
 
 function StudentList({ data, pageIndex, setPageIndex }) {
+   const { roleProfile } = useRole();
    const navigate = useNavigate();
    return (
       <>
@@ -27,6 +29,9 @@ function StudentList({ data, pageIndex, setPageIndex }) {
                               </h3>
                               <p className="text-sm text-gray-600 group-hover:text-white">
                                  Looking for {student.education_program}
+                              </p>
+                              <p className="text-sm text-gray-600 group-hover:text-white">
+                                 Status : {student.status}
                               </p>
                            </div>
                         </div>

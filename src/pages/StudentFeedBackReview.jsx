@@ -1,18 +1,17 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import StudentList from "../components/StudentList";
-import { useNavigate } from "react-router-dom";
 import { useRole } from "../context/RoleContext";
+import { useNavigate } from "react-router-dom";
 import GetReviewData from "../api/GetReviewData";
 import GetStudentList from "../api/GetStudentList";
 
-function StudentsReviewPage() {
+function StudentFeedBackReview() {
    const navigate = useNavigate();
-   const [pageIndex, setPageIndex] = useState(0);
    const { currentUser, roleProfile } = useRole();
 
+   const [pageIndex, setPageIndex] = useState(0);
    const [filters, setFilters] = useState([]);
    const [reviewFilters, setReviewFilters] = useState([]);
-
    const [fetchReview, setFetchReview] = useState(false);
    const [fetchStudentList, setFetchStudentList] = useState(false);
    const [data, setData] = useState([]);
@@ -26,41 +25,19 @@ function StudentsReviewPage() {
             ["priority", "=", "Medium"],
          ]);
          setFetchReview(true);
-      } else if (roleProfile == "Counsellor") {
-         setReviewFilters([
-            ["allocated_to", "=", currentUser],
-            ["priority", "=", "Medium"],
-         ]);
-         setFetchReview(true);
-      } else if (roleProfile == "Master Auditor") {
-         setReviewFilters([["priority", "=", "High"]]);
-         setFetchReview(true);
       }
    }, [roleProfile]);
 
    useEffect(() => {
       if (reviewData) {
-         const filteredStudentData = reviewData.map(
-            (review) => review.reference_name
-         );
-         console.log(reviewData);
-
-         if (roleProfile == "Master Auditor") {
+         if (roleProfile == "Auditor") {
+            const filteredStudentData = reviewData.map(
+               (review) => review.reference_name
+            );
             setFilters([
                ["registration_fee", "=", "1"],
-               ["status", "=", "Hold"],
-               ["name", "in", filteredStudentData],
-            ]);
-         } else if (roleProfile == "Counsellor") {
-            setFilters([
-               ["registration_fee", "=", "1"],
-               ["status", "in", ["Review", "Feedback Review"]],
-               ["name", "in", filteredStudentData],
-            ]);
-         } else if (roleProfile == "Auditor") {
-            setFilters([
-               ["registration_fee", "=", "1"],
-               ["status", "=", "Auditing"],
+               ["course_added", "=", "1"],
+               ["status", "=", "Feedback Review"],
                ["name", "in", filteredStudentData],
             ]);
          }
@@ -68,8 +45,6 @@ function StudentsReviewPage() {
          setFetchStudentList(true);
       }
    }, [reviewData]);
-
-   console.log(filters);
 
    useEffect(() => {
       if (studentList) setData(studentList);
@@ -85,7 +60,6 @@ function StudentsReviewPage() {
             &lt; Go back
          </button>
          <h1 className="text-4xl text-[#0f6990] ">Students List</h1>
-
          <>
             <StudentList
                data={data}
@@ -110,4 +84,4 @@ function StudentsReviewPage() {
    );
 }
 
-export default StudentsReviewPage;
+export default StudentFeedBackReview;

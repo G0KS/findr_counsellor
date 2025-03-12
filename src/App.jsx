@@ -12,6 +12,8 @@ import StudentsCourseGiven from "./pages/StudentsCourseGiven";
 
 import { ToastContainer } from "react-toastify";
 import { RoleProvider } from "./context/RoleContext";
+import StudentFeedBackReview from "./pages/StudentFeedBackReview";
+import AllStudentsPage from "./pages/AllStudentsPage";
 
 function App() {
    const api_key = import.meta.env.VITE_FRAPPE_STUDENT_KEY;
@@ -34,6 +36,7 @@ function App() {
                <ScrollToTop />
                <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/students" element={<AllStudentsPage />} />
                   <Route path="/students/new" element={<NewStudentsPage />} />
                   <Route
                      path="/students/review"
@@ -42,6 +45,10 @@ function App() {
                   <Route
                      path="/students/course-given"
                      element={<StudentsCourseGiven />}
+                  />
+                  <Route
+                     path="/students/feedback-review"
+                     element={<StudentFeedBackReview />}
                   />
                   <Route path="/students/:id" element={<Student />} />
                   <Route path="/course/:id" element={<Course />} />

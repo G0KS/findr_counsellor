@@ -21,6 +21,7 @@ function StudentsCourseGiven() {
          "education_program",
          "course_list",
          "course_added",
+         "status",
       ],
       filters: [
          ["registration_fee", "=", "1"],
